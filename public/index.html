@@ -1,123 +1,2906 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark light" />
-    <meta name="description" content="Live, read-only visualizer for Beads work graphs in Gas City" />
-    <title>Beads Visualizer</title>
-    <link rel="stylesheet" href="/styles.css" />
-  </head>
-  <body>
-    <header class="app-header">
-      <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div>
-          <p class="eyebrow">Gas City</p>
-          <h1>Beads Visualizer</h1>
-        </div>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Beads Event Factory</title>
+<style>:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 14px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, "Segoe UI", sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: var(--border-radius-lg, 12.5px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 17'%3E%3Cpath d='M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z'/%3E%3C/svg%3E");
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html > body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive > .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align="right"]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align="center"]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget > :not(.card, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress {
+  display: flex;
+  height: 6px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 6px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls > .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls > .form-label > :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type="file"] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type="file"]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type="file"]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type="color"] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type="checkbox"] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type="checkbox"]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type="checkbox"]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: "";
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type="radio"] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type="radio"]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: "";
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed="true"],
+  [aria-selected="true"],
+  .is-selected
+) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed="true"], [aria-selected="true"], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget > svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: 16px !important;
+  height: 16px !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html>body{padding:0}</style>
+</head>
+<body>
+<div id="beads-event-factory">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Saira:wght@400;500&family=Syncopate&display=swap');
+
+    #beads-event-factory {
+      --bef-ink: #050912;
+      --bef-dark: #09111b;
+      --bef-surface: #101a28;
+      --bef-surface-strong: #162233;
+      --bef-blue: #7aa0cb;
+      --bef-plasma: #a9ceff;
+      --bef-spark: #ff8f5a;
+      --bef-gold: #cfa548;
+      --bef-gold-bright: #f2d995;
+      --bef-brass: #8d6830;
+      --bef-chrome: #ced7e2;
+      --bef-silver: #92a5b9;
+      --bef-grid: rgba(124, 170, 222, 0.08);
+      --bef-text: #e8eef7;
+      --bef-red: #ff6d65;
+      --primary: var(--bef-gold);
+      --primary-foreground: var(--bef-ink);
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      color: var(--foreground);
+      font-family: "Saira", sans-serif;
+    }
+
+    #beads-event-factory .bef-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    #beads-event-factory .bef-header h2 {
+      margin: 0;
+      color: var(--foreground);
+      font-family: "Syncopate", sans-serif;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    #beads-event-factory .bef-event-line {
+      min-height: 24px;
+      margin-bottom: 8px;
+      color: var(--muted-foreground);
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    #beads-event-factory .bef-event-line strong {
+      color: var(--foreground);
+      font-weight: 500;
+    }
+
+    #beads-event-factory .bef-stage {
+      position: relative;
+      width: 100%;
+      min-height: 390px;
+      flex: 1 1 440px;
+      overflow: hidden;
+    }
+
+    #beads-event-factory canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #beads-event-factory .bef-motion-note {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      color: var(--bef-silver);
+      font-family: "IBM Plex Mono", monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    #beads-event-factory [hidden] {
+      display: none !important;
+    }
+
+    #beads-event-factory .bef-controls {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    #beads-event-factory .bef-controls select,
+    #beads-event-factory .bef-toolbar select,
+    #beads-event-factory .bef-toolbar input {
+      min-height: 34px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--foreground);
+      background: var(--background);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: var(--font-size-small);
+    }
+
+    #beads-event-factory .bef-controls select,
+    #beads-event-factory .bef-toolbar select {
+      padding: 0 28px 0 9px;
+    }
+
+    #beads-event-factory .bef-city-select {
+      max-width: 190px;
+    }
+
+    #beads-event-factory .bef-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 0 9px;
+    }
+
+    #beads-event-factory .bef-toolbar input {
+      flex: 1 1 220px;
+      min-width: 150px;
+      padding: 0 10px;
+    }
+
+    #beads-event-factory .bef-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      color: var(--muted-foreground);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: var(--font-size-small);
+      white-space: nowrap;
+    }
+
+    #beads-event-factory .bef-check input {
+      min-height: auto;
+      accent-color: var(--bef-gold);
+    }
+
+    #beads-event-factory .bef-tooltip {
+      position: absolute;
+      z-index: 8;
+      width: min(310px, calc(100% - 20px));
+      padding: 9px 11px;
+      border: 1px solid var(--bef-brass);
+      border-radius: 8px;
+      color: var(--bef-text);
+      background: rgba(9, 17, 27, 0.96);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      pointer-events: none;
+    }
+
+    #beads-event-factory .bef-tooltip strong,
+    #beads-event-factory .bef-tooltip span {
+      display: block;
+    }
+
+    #beads-event-factory .bef-tooltip strong {
+      margin: 2px 0;
+      color: var(--bef-gold-bright);
+      font-weight: 500;
+    }
+
+    #beads-event-factory .bef-tooltip span {
+      color: var(--bef-silver);
+    }
+
+    #beads-event-factory .bef-details {
+      position: absolute;
+      z-index: 10;
+      top: 10px;
+      right: 10px;
+      bottom: 10px;
+      width: min(350px, calc(100% - 20px));
+      overflow: auto;
+      border: 1px solid var(--bef-brass);
+      border-radius: 10px;
+      color: var(--bef-text);
+      background: rgba(9, 17, 27, 0.97);
+      box-shadow: -14px 0 34px rgba(0, 0, 0, 0.42);
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    #beads-event-factory .bef-details-header {
+      position: sticky;
+      top: 0;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 14px;
+      border-bottom: 1px solid rgba(146, 165, 185, 0.24);
+      background: rgba(9, 17, 27, 0.98);
+    }
+
+    #beads-event-factory .bef-details-header h3 {
+      margin: 3px 0 0;
+      color: var(--bef-gold-bright);
+      font-family: "Saira", sans-serif;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    #beads-event-factory .bef-details-id {
+      color: var(--bef-silver);
+      font-size: 10px;
+    }
+
+    #beads-event-factory .bef-details-close {
+      min-width: 29px;
+      min-height: 29px;
+      padding: 0;
+      border: 1px solid rgba(146, 165, 185, 0.35);
+      border-radius: 6px;
+      color: var(--bef-text);
+      background: transparent;
+    }
+
+    #beads-event-factory .bef-details-body {
+      padding: 12px 14px 18px;
+    }
+
+    #beads-event-factory .bef-details-section {
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(146, 165, 185, 0.18);
+    }
+
+    #beads-event-factory .bef-details-section:last-child {
+      border-bottom: 0;
+    }
+
+    #beads-event-factory .bef-details-section h4 {
+      margin: 0 0 7px;
+      color: var(--bef-silver);
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    #beads-event-factory .bef-details-section p {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    #beads-event-factory .bef-detail-grid {
+      display: grid;
+      grid-template-columns: 88px minmax(0, 1fr);
+      gap: 6px 9px;
+      margin: 0;
+      font-size: 10px;
+    }
+
+    #beads-event-factory .bef-detail-grid dt {
+      color: var(--bef-silver);
+    }
+
+    #beads-event-factory .bef-detail-grid dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    #beads-event-factory .bef-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    #beads-event-factory .bef-chip {
+      padding: 2px 6px;
+      border: 1px solid rgba(207, 165, 72, 0.38);
+      border-radius: 999px;
+      color: var(--bef-gold-bright);
+      font-size: 9px;
+    }
+
+    #beads-event-factory .bef-metadata {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 9px;
+    }
+
+    #beads-event-factory .bef-metadata th,
+    #beads-event-factory .bef-metadata td {
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(146, 165, 185, 0.14);
+      overflow-wrap: anywhere;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    #beads-event-factory .bef-metadata th {
+      width: 39%;
+      padding-right: 8px;
+      color: var(--bef-silver);
+      font-weight: 400;
+    }
+
+    @media (max-width: 520px) {
+      #beads-event-factory .bef-motion-note {
+        display: none;
+      }
+    }
+  </style>
+
+  <div class="bef-header">
+    <h2>Beads event factory</h2>
+    <div class="viz-controls bef-controls">
+      <select class="bef-city-select" id="bef-city" aria-label="Gas City"></select>
+      <button class="btn" id="bef-refresh" type="button">Refresh</button>
+      <button class="btn" id="bef-mode" type="button">Demo events</button>
+      <button class="btn btn-primary" id="bef-next-event" type="button" hidden>Run next event</button>
+    </div>
+  </div>
+
+  <div class="bef-event-line text-small" id="bef-event-line" aria-live="polite">
+    Connecting to Gas City…
+  </div>
+
+  <div class="bef-toolbar" id="bef-toolbar">
+    <input id="bef-search" type="search" placeholder="Find by ID, title, assignee, or label" aria-label="Find a bead">
+    <select id="bef-type" aria-label="Filter by bead type"><option value="">All types</option></select>
+    <label class="bef-check"><input id="bef-closed" type="checkbox"> Include closed</label>
+  </div>
+
+  <div class="bef-stage card" id="bef-stage">
+    <canvas id="bef-canvas" tabindex="0" role="img" aria-label="Animated Beads factory with a blocked funnel, open bin, articulated crane claws, closed bin, and floor for deferred or rejected work. Hover or click a bead for details."></canvas>
+    <div class="bef-motion-note text-small" id="bef-motion-note">Gravity on</div>
+    <div class="bef-tooltip" id="bef-tooltip" role="tooltip" hidden></div>
+    <aside class="bef-details" id="bef-details" aria-label="Bead details" hidden>
+      <div class="bef-details-header">
+        <div><span class="bef-details-id" id="bef-details-id"></span><h3 id="bef-details-title">Bead details</h3></div>
+        <button class="bef-details-close" id="bef-details-close" type="button" aria-label="Close bead details">×</button>
       </div>
-      <div class="connection" id="connection" data-state="loading" role="status">
-        <span class="connection-dot" aria-hidden="true"></span>
-        <span id="connection-label">Connecting</span>
-      </div>
-    </header>
+      <div class="bef-details-body" id="bef-details-body"></div>
+    </aside>
+  </div>
 
-    <main>
-      <section class="control-panel" aria-label="Viewer controls">
-        <label>
-          <span>City</span>
-          <select id="city-select" aria-label="City"></select>
-        </label>
-        <label>
-          <span>Status</span>
-          <select id="status-select" aria-label="Status filter">
-            <option value="">All active statuses</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In progress</option>
-            <option value="closed">Closed</option>
-          </select>
-        </label>
-        <label>
-          <span>Type</span>
-          <select id="type-select" aria-label="Bead type filter">
-            <option value="">All types</option>
-          </select>
-        </label>
-        <label class="search-control">
-          <span>Find a bead</span>
-          <input id="search-input" type="search" placeholder="ID, title, assignee, label…" autocomplete="off" />
-        </label>
-        <label class="check-control">
-          <input id="closed-toggle" type="checkbox" />
-          <span>Include closed</span>
-        </label>
-        <label class="check-control">
-          <input id="live-toggle" type="checkbox" checked />
-          <span>Live</span>
-        </label>
-        <button class="secondary-button" id="refresh-button" type="button">Refresh</button>
-      </section>
+  <script>
+    (() => {
+      const root = document.getElementById('beads-event-factory');
+      const stage = root.querySelector('#bef-stage');
+      const canvas = root.querySelector('#bef-canvas');
+      const ctx = canvas.getContext('2d');
+      const nextButton = root.querySelector('#bef-next-event');
+      const eventLine = root.querySelector('#bef-event-line');
+      const motionNote = root.querySelector('#bef-motion-note');
+      const citySelect = root.querySelector('#bef-city');
+      const refreshButton = root.querySelector('#bef-refresh');
+      const modeButton = root.querySelector('#bef-mode');
+      const toolbar = root.querySelector('#bef-toolbar');
+      const searchInput = root.querySelector('#bef-search');
+      const typeSelect = root.querySelector('#bef-type');
+      const closedToggle = root.querySelector('#bef-closed');
+      const tooltip = root.querySelector('#bef-tooltip');
+      const details = root.querySelector('#bef-details');
+      const detailsID = root.querySelector('#bef-details-id');
+      const detailsTitle = root.querySelector('#bef-details-title');
+      const detailsBody = root.querySelector('#bef-details-body');
+      const detailsClose = root.querySelector('#bef-details-close');
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      <section class="summary-strip" aria-label="Bead summary">
-        <div><strong id="visible-count">0</strong><span>Visible</span></div>
-        <div><strong id="ready-count">0</strong><span>Ready</span></div>
-        <div><strong id="progress-count">0</strong><span>In progress</span></div>
-        <div><strong id="blocked-count">0</strong><span>Blocked</span></div>
-        <div><strong id="closed-count">0</strong><span>Closed</span></div>
-        <p id="page-summary">Waiting for city data</p>
-      </section>
+      let width = 0;
+      let height = 0;
+      let dpr = 1;
+      let lastTime = 0;
+      let frameRequested = false;
+      let initialized = false;
+      let step = 0;
+      let blockedGateOpen = false;
+      let rejectedPulse = 0;
+      let viewMode = 'demo';
+      let liveRecords = [];
+      let liveTotal = 0;
+      let liveRequest = 0;
+      let liveTimer = 0;
+      let hoveredBead = null;
+      let selectedBead = null;
+      const tweens = [];
+      const beads = [];
 
-      <div class="workspace">
-        <section class="factory-panel" aria-labelledby="factory-title">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Live work graph</p>
-              <h2 id="factory-title">The bead floor</h2>
-            </div>
-            <div class="legend" aria-label="Legend">
-              <span><i class="legend-dot ready"></i>Ready</span>
-              <span><i class="legend-dot progress"></i>In progress</span>
-              <span><i class="legend-dot blocked"></i>Blocked</span>
-              <span><i class="legend-dot closed"></i>Closed</span>
-            </div>
-          </div>
+      const mainClaw = { x: 0, y: 0, open: 1, homeX: 0, homeY: 0, sway: 0, swayVelocity: 0, lastX: 0, visible: false };
+      const workClaw = { x: 0, y: 0, open: 0, homeX: 0, homeY: 0, sway: 0, swayVelocity: 0, lastX: 0, visible: true };
 
-          <div class="board-scroll">
-            <div class="board" id="board" aria-label="Interactive bead status visualization">
-              <div class="lane-grid" id="lane-grid"></div>
-              <svg class="dependency-layer" id="dependency-layer" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true"></svg>
-              <div class="node-layer" id="node-layer"></div>
-              <div class="empty-state" id="empty-state" hidden>
-                <strong>No beads match this view.</strong>
-                <span>Try changing the filters. The database may merely be behaving itself.</span>
-              </div>
-              <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
-            </div>
-          </div>
-          <div class="panel-footer">
-            <span id="updated-at">Not yet updated</span>
-            <button class="text-button" id="load-more-button" type="button" hidden>Load more</button>
-          </div>
-        </section>
+      const paletteProbe = document.createElement('span');
+      paletteProbe.style.position = 'absolute';
+      paletteProbe.style.visibility = 'hidden';
+      root.appendChild(paletteProbe);
 
-        <aside class="detail-panel" id="detail-panel" aria-labelledby="detail-title">
-          <div class="detail-empty" id="detail-empty">
-            <div class="detail-orbit" aria-hidden="true"><span></span></div>
-            <h2 id="detail-title">Inspect a bead</h2>
-            <p>Hover for a quick summary. Click a bead for its full record, dependencies, children, and metadata.</p>
-          </div>
-          <div id="detail-content" hidden></div>
-        </aside>
-      </div>
-    </main>
+      function color(token) {
+        paletteProbe.style.color = `var(${token})`;
+        return getComputedStyle(paletteProbe).color;
+      }
 
-    <template id="lane-template">
-      <div class="lane">
-        <div class="lane-label"><strong></strong><span></span><b></b></div>
-      </div>
-    </template>
+      function palette() {
+        return {
+          background: color('--bef-ink'),
+          dark: color('--bef-dark'),
+          surface: color('--bef-surface'),
+          surfaceStrong: color('--bef-surface-strong'),
+          foreground: color('--bef-text'),
+          muted: color('--bef-silver'),
+          chrome: color('--bef-chrome'),
+          blue: color('--bef-blue'),
+          plasma: color('--bef-plasma'),
+          grid: color('--bef-grid'),
+          yellow: color('--bef-gold-bright'),
+          brass: color('--bef-brass'),
+          spark: color('--bef-spark'),
+          red: color('--bef-red')
+        };
+      }
 
-    <script type="module" src="/app.js"></script>
-  </body>
+      function layout() {
+        const blockedCenter = width * 0.105;
+        const blockedHalfWidth = width < 520 ? 14 : 17;
+        const railY = height * 0.065;
+        const floorY = height * 0.89;
+        const blockedTop = height * 0.22;
+        const open = {
+          left: width * 0.095,
+          right: width * 0.34,
+          top: height * 0.56,
+          bottom: height * 0.79
+        };
+        const closed = {
+          left: width * 0.76,
+          right: width * 0.955,
+          top: height * 0.56,
+          bottom: height * 0.79
+        };
+        const workGap = closed.left - open.right;
+        return {
+          railY,
+          floorY,
+          blocked: {
+            left: blockedCenter - blockedHalfWidth,
+            right: blockedCenter + blockedHalfWidth,
+            center: blockedCenter,
+            top: blockedTop,
+            bottom: height * 0.49
+          },
+          open,
+          closed,
+          progress: {
+            firstX: open.right + workGap * 0.34,
+            secondX: open.right + workGap * 0.68,
+            homeY: railY + (open.top - railY) * 0.61,
+            travelY: Math.min(blockedTop - 22, railY + 44)
+          },
+          rut: {
+            left: width * 0.5,
+            right: width * 0.63,
+            center: width * 0.565,
+            depth: 12
+          }
+        };
+      }
+
+      function groundHeightAt(x) {
+        const box = layout();
+        const { left, right, depth } = box.rut;
+        if (x <= left || x >= right) return box.floorY;
+        const progress = (x - left) / (right - left);
+        return box.floorY + Math.sin(progress * Math.PI) * depth;
+      }
+
+      function makeBead(id, status, x, y, options = {}) {
+        const bead = {
+          id,
+          status,
+          record: options.record || {
+            id,
+            title: options.title || id,
+            status,
+            issue_type: options.issueType || 'task'
+          },
+          x,
+          y,
+          vx: 0,
+          vy: 0,
+          baseRadius: options.radius || 10,
+          radius: Math.min(options.radius || 10, width < 520 ? 8 : 10),
+          dynamic: false,
+          visible: options.visible !== false,
+          heldBy: options.heldBy || null,
+          settledFor: 0,
+          progressPulse: 0,
+          activityPulse: 0,
+          commentPulse: 0,
+          scale: 1
+        };
+        beads.push(bead);
+        return bead;
+      }
+
+      function findBead(id) {
+        return beads.find((bead) => bead.id === id);
+      }
+
+      function initializeScene() {
+        const box = layout();
+        beads.length = 0;
+
+        mainClaw.homeX = box.progress.firstX;
+        mainClaw.homeY = box.progress.homeY;
+        mainClaw.x = -45;
+        mainClaw.y = mainClaw.homeY;
+        mainClaw.open = 1;
+        mainClaw.sway = 0;
+        mainClaw.swayVelocity = 0;
+        mainClaw.lastX = mainClaw.x;
+        mainClaw.visible = false;
+
+        workClaw.homeX = box.progress.secondX;
+        workClaw.homeY = box.progress.homeY;
+        workClaw.x = workClaw.homeX;
+        workClaw.y = workClaw.homeY;
+        workClaw.open = 0;
+        workClaw.sway = 0;
+        workClaw.swayVelocity = 0;
+        workClaw.lastX = workClaw.x;
+        workClaw.visible = true;
+
+        makeBead('b-14', 'blocked', box.blocked.center, box.blocked.bottom - 12, { title: 'Waiting on a blocking dependency' });
+        makeBead('b-15', 'blocked', box.blocked.center, box.blocked.bottom - 33, { title: 'Blocked implementation task' });
+        makeBead('b-16', 'blocked', box.blocked.center, box.blocked.bottom - 54, { title: 'Blocked validation task' });
+        makeBead('b-17', 'open', box.open.left + (box.open.right - box.open.left) * 0.3, box.open.bottom - 12, { title: 'Ready work item' });
+        makeBead('b-22', 'open', box.open.left + (box.open.right - box.open.left) * 0.65, box.open.bottom - 12, { title: 'Open work item' });
+        makeBead('b-08', 'in_progress', workClaw.x, workClaw.y + 27, { heldBy: workClaw, title: 'Claimed work item' });
+        makeBead('b-02', 'closed', box.closed.left + (box.closed.right - box.closed.left) * 0.3, box.closed.bottom - 12, { title: 'Completed work item' });
+        makeBead('b-03', 'closed', box.closed.left + (box.closed.right - box.closed.left) * 0.68, box.closed.bottom - 12, { title: 'Closed work item' });
+        makeBead('b-11', 'deferred', box.rut.center, groundHeightAt(box.rut.center) - 12, { title: 'Deferred work item' });
+        makeBead('b-31', 'open', (box.open.left + box.open.right) / 2, box.open.top - 45, { visible: false, title: 'Newly created work item' });
+
+        blockedGateOpen = false;
+        rejectedPulse = 0;
+        tweens.length = 0;
+        step = 0;
+        initialized = true;
+        draw();
+      }
+
+      function resize() {
+        const rect = stage.getBoundingClientRect();
+        const oldWidth = width || rect.width;
+        const oldHeight = height || rect.height;
+        width = Math.max(320, rect.width);
+        height = rect.height;
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        if (!initialized) {
+          initializeScene();
+          return;
+        }
+
+        const scaleX = width / oldWidth;
+        const scaleY = height / oldHeight;
+        beads.forEach((bead) => {
+          bead.x *= scaleX;
+          bead.y *= scaleY;
+          bead.radius = Math.min(bead.baseRadius, width < 520 ? 8 : 10);
+        });
+        [mainClaw, workClaw].forEach((claw) => {
+          claw.x *= scaleX;
+          claw.y *= scaleY;
+          claw.homeX *= scaleX;
+          claw.homeY *= scaleY;
+          claw.lastX = claw.x;
+        });
+        draw();
+      }
+
+      function roundedRect(x, y, w, h, radius) {
+        const r = Math.min(radius, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+
+      function drawLabel(text, x, y, align = 'left', tone = 'foreground') {
+        const p = palette();
+        ctx.fillStyle = p[tone];
+        ctx.font = `${width < 520 ? 11 : 12}px "IBM Plex Mono", monospace`;
+        ctx.textAlign = align;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x, y);
+      }
+
+      function drawFactory() {
+        const p = palette();
+        const box = layout();
+        ctx.clearRect(0, 0, width, height);
+
+        const background = ctx.createLinearGradient(0, 0, width, height);
+        background.addColorStop(0, p.surface);
+        background.addColorStop(0.46, p.dark);
+        background.addColorStop(1, p.background);
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.strokeStyle = p.grid;
+        ctx.lineWidth = 1;
+        for (let x = 24; x < width; x += 48) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        for (let y = 24; y < height; y += 48) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = p.chrome;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(0, box.railY);
+        ctx.lineTo(width, box.railY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, box.floorY);
+        ctx.lineTo(box.rut.left, box.floorY);
+        ctx.quadraticCurveTo(box.rut.center, box.floorY + box.rut.depth * 2, box.rut.right, box.floorY);
+        ctx.lineTo(width, box.floorY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(box.blocked.left, box.blocked.bottom);
+        ctx.lineTo(box.blocked.left, box.blocked.top);
+        ctx.moveTo(box.blocked.left - 4, box.blocked.top);
+        ctx.lineTo(box.blocked.left + 5, box.blocked.top);
+        ctx.moveTo(box.blocked.right, box.blocked.bottom);
+        ctx.lineTo(box.blocked.right, box.blocked.top);
+        ctx.moveTo(box.blocked.right - 5, box.blocked.top);
+        ctx.lineTo(box.blocked.right + 4, box.blocked.top);
+        if (!blockedGateOpen) {
+          ctx.moveTo(box.blocked.left, box.blocked.bottom);
+          ctx.lineTo(box.blocked.right, box.blocked.bottom);
+        }
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(box.open.left, box.open.top);
+        ctx.lineTo(box.open.left, box.open.bottom);
+        ctx.lineTo(box.open.right, box.open.bottom);
+        ctx.lineTo(box.open.right, box.open.top);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(box.closed.left, box.closed.top);
+        ctx.lineTo(box.closed.left, box.closed.bottom);
+        ctx.lineTo(box.closed.right, box.closed.bottom);
+        ctx.lineTo(box.closed.right, box.closed.top);
+        ctx.stroke();
+
+        drawLabel(`BLOCKED · ${countStatus('blocked')}`, box.blocked.right + 8, box.blocked.top + 10, 'left', 'yellow');
+        drawLabel(`OPEN · ${countStatus('open')}`, box.open.right - 4, box.open.top - 18, 'right', 'yellow');
+        drawLabel(`IN PROGRESS · ${countStatus('in_progress')}`, width * 0.53, box.railY - 14, 'center', 'yellow');
+        drawLabel(`CLOSED · ${countClosed()}`, box.closed.right - 4, box.closed.top - 38, 'right', 'yellow');
+        drawLabel(`DEFERRED / FAILED CLOSE · ${countGround()}`, box.rut.center, box.floorY + 28, 'center', 'muted');
+      }
+
+      function hookPosition(claw) {
+        const cableLength = Math.max(20, claw.y - layout().railY - 7);
+        return {
+          x: claw.x + Math.sin(claw.sway) * cableLength,
+          y: claw.y
+        };
+      }
+
+      function drawClaw(claw) {
+        if (!claw.visible) return;
+        const p = palette();
+        const hook = hookPosition(claw);
+        const spread = 15 + claw.open * 10;
+        const tip = 12 + claw.open * 9;
+
+        ctx.strokeStyle = p.chrome;
+        ctx.fillStyle = p.surfaceStrong;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        roundedRect(claw.x - 17, layout().railY - 7, 34, 14, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(claw.x, layout().railY + 7);
+        ctx.lineTo(hook.x, hook.y - 24);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(hook.x, hook.y);
+        ctx.rotate(claw.sway * 0.45);
+
+        roundedRect(-10, -29, 20, 12, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(-7, -17);
+        ctx.lineTo(-spread, -5);
+        ctx.lineTo(-tip, 14);
+        ctx.lineTo(-6, 19);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(7, -17);
+        ctx.lineTo(spread, -5);
+        ctx.lineTo(tip, 14);
+        ctx.lineTo(6, 19);
+        ctx.stroke();
+
+        ctx.fillStyle = p.brass;
+        ctx.beginPath();
+        ctx.arc(-spread, -5, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(spread, -5, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawBead(bead) {
+        if (!bead.visible) return;
+        const p = palette();
+        const radius = bead.radius * bead.scale;
+        if (bead.heldBy) {
+          const hook = hookPosition(bead.heldBy);
+          const rotation = bead.heldBy.sway * 0.45;
+          bead.x = hook.x + Math.sin(rotation) * 28;
+          bead.y = hook.y + Math.cos(rotation) * 28;
+        }
+
+        if (bead.status === 'in_progress') {
+          ctx.strokeStyle = p.plasma;
+          ctx.globalAlpha = 0.42;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(bead.x, bead.y, bead.radius + 6, 0, Math.PI * 2);
+          ctx.stroke();
+
+          if (bead.progressPulse > 0) {
+            ctx.strokeStyle = p.yellow;
+            ctx.globalAlpha = bead.progressPulse * 0.6;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(bead.x, bead.y, bead.radius + 8 + (1 - bead.progressPulse) * 18, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+
+        if (bead.activityPulse > 0) {
+          ctx.strokeStyle = p.blue;
+          ctx.globalAlpha = bead.activityPulse * 0.72;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(bead.x, bead.y, radius + 7 + (1 - bead.activityPulse) * 18, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+
+        if (bead === hoveredBead || bead === selectedBead) {
+          ctx.strokeStyle = bead === selectedBead ? p.spark : p.plasma;
+          ctx.globalAlpha = 0.9;
+          ctx.lineWidth = bead === selectedBead ? 3 : 2;
+          ctx.beginPath();
+          ctx.arc(bead.x, bead.y, radius + 6, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+
+        ctx.fillStyle = p.yellow;
+        ctx.strokeStyle = bead.status === 'failed' ? p.red : p.brass;
+        ctx.lineWidth = bead.status === 'failed' ? 3 : 2;
+        ctx.beginPath();
+        ctx.arc(bead.x, bead.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = p.foreground;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.arc(bead.x - radius * 0.3, bead.y - radius * 0.35, radius * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        if (bead.status === 'failed' && rejectedPulse > 0) {
+          ctx.strokeStyle = p.red;
+          ctx.globalAlpha = Math.max(0, rejectedPulse);
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(bead.x, bead.y, bead.radius + (1 - rejectedPulse) * 22, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+
+        if (bead.commentPulse > 0) {
+          const bubbleWidth = 29;
+          const bubbleHeight = 20;
+          const bubbleX = bead.x + radius + 5;
+          const bubbleY = bead.y - radius - 24;
+          ctx.globalAlpha = Math.min(1, bead.commentPulse * 1.8);
+          ctx.fillStyle = p.surfaceStrong;
+          ctx.strokeStyle = p.chrome;
+          ctx.lineWidth = 1.5;
+          roundedRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 6);
+          ctx.fill();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(bubbleX + 5, bubbleY + bubbleHeight - 1);
+          ctx.lineTo(bubbleX + 1, bubbleY + bubbleHeight + 6);
+          ctx.lineTo(bubbleX + 11, bubbleY + bubbleHeight - 1);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = p.foreground;
+          ctx.font = '14px "IBM Plex Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('…', bubbleX + bubbleWidth / 2, bubbleY + bubbleHeight / 2 - 2);
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      function draw() {
+        drawFactory();
+        drawClaw(mainClaw);
+        drawClaw(workClaw);
+        beads.forEach(drawBead);
+      }
+
+      function countStatus(status) {
+        return beads.filter((bead) => bead.visible && bead.status === status).length;
+      }
+
+      function countClosed() {
+        return beads.filter((bead) => bead.visible && (bead.status === 'closed' || bead.status === 'failed')).length;
+      }
+
+      function countGround() {
+        return beads.filter((bead) => bead.visible && (bead.status === 'deferred' || bead.status === 'failed')).length;
+      }
+
+      function physicsRegion(bead) {
+        const box = layout();
+        if (bead.status === 'open') return box.open;
+        if (bead.status === 'blocked') {
+          return { left: box.blocked.left, right: box.blocked.right, bottom: box.blocked.bottom };
+        }
+        if (bead.status === 'closed') return box.closed;
+        return { left: 0, right: width, bottom: groundHeightAt(bead.x) };
+      }
+
+      function updatePhysics(dt) {
+        let active = false;
+        const gravity = 980;
+
+        beads.forEach((bead) => {
+          if (!bead.visible || bead.heldBy || !bead.dynamic) return;
+          active = true;
+          const region = physicsRegion(bead);
+          bead.vy += gravity * dt;
+          bead.x += bead.vx * dt;
+          bead.y += bead.vy * dt;
+          bead.vx *= Math.pow(0.985, dt * 60);
+
+          if (bead.x - bead.radius < region.left) {
+            bead.x = region.left + bead.radius;
+            bead.vx = Math.abs(bead.vx) * 0.5;
+          }
+          if (bead.x + bead.radius > region.right) {
+            bead.x = region.right - bead.radius;
+            bead.vx = -Math.abs(bead.vx) * 0.5;
+          }
+          if (bead.y + bead.radius >= region.bottom) {
+            bead.y = region.bottom - bead.radius;
+            if (Math.abs(bead.vy) > 45) {
+              bead.vy *= -0.32;
+              bead.vx *= 0.72;
+            } else {
+              bead.vy = 0;
+              bead.vx *= 0.7;
+            }
+          }
+
+          if (Math.abs(bead.vx) < 3 && Math.abs(bead.vy) < 3 && bead.y + bead.radius >= region.bottom - 0.5) {
+            bead.settledFor += dt;
+            if (bead.settledFor > 0.28) bead.dynamic = false;
+          } else {
+            bead.settledFor = 0;
+          }
+        });
+
+        if (active) resolveBeadCollisions();
+
+        return active;
+      }
+
+      function collisionGroup(bead) {
+        if (bead.status === 'deferred' || bead.status === 'failed') return 'ground';
+        return bead.status;
+      }
+
+      function resolveBeadCollisions() {
+        const candidates = beads.filter((bead) => bead.visible && !bead.heldBy);
+        for (let first = 0; first < candidates.length; first += 1) {
+          for (let second = first + 1; second < candidates.length; second += 1) {
+            const a = candidates[first];
+            const b = candidates[second];
+            if (collisionGroup(a) !== collisionGroup(b)) continue;
+
+            let dx = b.x - a.x;
+            let dy = b.y - a.y;
+            let distance = Math.hypot(dx, dy);
+            const minimum = a.radius + b.radius + 1;
+            if (distance >= minimum) continue;
+            if (distance < 0.001) {
+              dx = 1;
+              dy = 0;
+              distance = 1;
+            }
+
+            const nx = dx / distance;
+            const ny = dy / distance;
+            const correction = (minimum - distance) / 2;
+            a.x -= nx * correction;
+            a.y -= ny * correction;
+            b.x += nx * correction;
+            b.y += ny * correction;
+
+            const separatingVelocity = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+            if (separatingVelocity < 0) {
+              const impulse = -separatingVelocity * 0.58;
+              a.vx -= impulse * nx;
+              a.vy -= impulse * ny;
+              b.vx += impulse * nx;
+              b.vy += impulse * ny;
+            }
+            a.dynamic = true;
+            b.dynamic = true;
+            a.settledFor = 0;
+            b.settledFor = 0;
+          }
+        }
+      }
+
+      function updateTweens(now) {
+        if (!tweens.length) return false;
+        for (let index = tweens.length - 1; index >= 0; index -= 1) {
+          const tween = tweens[index];
+          const raw = Math.min(1, (now - tween.start) / tween.duration);
+          const eased = raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2;
+          tween.update(eased);
+          if (raw >= 1) {
+            tweens.splice(index, 1);
+            tween.resolve();
+          }
+        }
+        return tweens.length > 0;
+      }
+
+      function updateClawDynamics(dt) {
+        let active = false;
+        [mainClaw, workClaw].forEach((claw) => {
+          if (!claw.visible) return;
+          const speed = (claw.x - claw.lastX) / Math.max(dt, 0.001);
+          const target = Math.max(-0.16, Math.min(0.16, -speed * 0.00032));
+          claw.swayVelocity += (target - claw.sway) * 36 * dt;
+          claw.swayVelocity *= Math.exp(-6.5 * dt);
+          claw.sway += claw.swayVelocity * dt;
+          claw.lastX = claw.x;
+          if (Math.abs(claw.sway) > 0.001 || Math.abs(claw.swayVelocity) > 0.001 || Math.abs(target) > 0.001) {
+            active = true;
+          }
+        });
+        return active;
+      }
+
+      function updateEffects(dt) {
+        let active = false;
+        beads.forEach((bead) => {
+          if (bead.progressPulse > 0) {
+            bead.progressPulse = Math.max(0, bead.progressPulse - dt * 1.35);
+            if (bead.progressPulse > 0) active = true;
+          }
+          if (bead.activityPulse > 0) {
+            bead.activityPulse = Math.max(0, bead.activityPulse - dt * 1.15);
+            if (bead.activityPulse > 0) active = true;
+          }
+          if (bead.commentPulse > 0) {
+            bead.commentPulse = Math.max(0, bead.commentPulse - dt * 0.75);
+            if (bead.commentPulse > 0) active = true;
+          }
+        });
+        return active;
+      }
+
+      function animateFrame(now) {
+        frameRequested = false;
+        const dt = Math.min(0.032, Math.max(0.001, (now - lastTime) / 1000 || 0.016));
+        lastTime = now;
+        const tweening = updateTweens(now);
+        const swaying = updateClawDynamics(dt);
+        const moving = updatePhysics(dt);
+        const effects = updateEffects(dt);
+        if (rejectedPulse > 0) rejectedPulse = Math.max(0, rejectedPulse - dt * 1.25);
+        draw();
+        if (tweening || swaying || moving || effects || rejectedPulse > 0) requestFrame();
+      }
+
+      function requestFrame() {
+        if (frameRequested) return;
+        frameRequested = true;
+        requestAnimationFrame(animateFrame);
+      }
+
+      function tween(duration, update) {
+        if (reducedMotion) {
+          update(1);
+          draw();
+          return Promise.resolve();
+        }
+        return new Promise((resolve) => {
+          tweens.push({ start: performance.now(), duration, update, resolve });
+          requestFrame();
+        });
+      }
+
+      function moveClawHorizontal(claw, targetX, duration = 650) {
+        const startX = claw.x;
+        if (Math.abs(targetX - startX) < 0.5) return Promise.resolve();
+        return tween(duration, (amount) => {
+          claw.x = startX + (targetX - startX) * amount;
+        });
+      }
+
+      function moveClawVertical(claw, targetY, duration = 520) {
+        const startY = claw.y;
+        return tween(duration, (amount) => {
+          claw.y = startY + (targetY - startY) * amount;
+        });
+      }
+
+      function articulateClaw(claw, targetOpen, duration = 260) {
+        const startOpen = claw.open;
+        return tween(duration, (amount) => {
+          claw.open = startOpen + (targetOpen - startOpen) * amount;
+        });
+      }
+
+      function recoilClaw(claw, distance = 8) {
+        const startY = claw.y;
+        return tween(280, (amount) => {
+          claw.y = startY - Math.sin(amount * Math.PI) * distance;
+        });
+      }
+
+      async function enterClaw(claw, restX) {
+        const travelY = layout().progress.travelY;
+        claw.visible = true;
+        claw.x = -45;
+        claw.y = travelY;
+        claw.open = 1;
+        claw.sway = 0;
+        claw.swayVelocity = 0;
+        claw.lastX = claw.x;
+        draw();
+        await moveClawHorizontal(claw, restX, 820);
+      }
+
+      async function exitClaw(claw) {
+        const travelY = layout().progress.travelY;
+        if (Math.abs(claw.y - travelY) > 1) await moveClawVertical(claw, travelY, 440);
+        await moveClawHorizontal(claw, -45, 760);
+        claw.visible = false;
+        draw();
+      }
+
+      async function pickBead(claw, bead) {
+        const travelY = layout().progress.travelY;
+        bead.dynamic = false;
+        await moveClawHorizontal(claw, bead.x, 650);
+        await moveClawVertical(claw, bead.y - 28, 520);
+        await articulateClaw(claw, 0, 260);
+        bead.heldBy = claw;
+        bead.status = 'in_progress';
+        bead.progressPulse = 1;
+        requestFrame();
+        await recoilClaw(claw, 8);
+        await moveClawVertical(claw, travelY, 540);
+      }
+
+      async function dropBead(claw, bead, targetX, targetY, status) {
+        const travelY = layout().progress.travelY;
+        if (Math.abs(claw.y - travelY) > 1) await moveClawVertical(claw, travelY, 440);
+        await moveClawHorizontal(claw, targetX, 760);
+        await wait(150);
+        await moveClawVertical(claw, targetY, 480);
+        await articulateClaw(claw, 1, 260);
+        release(bead, status, claw.sway * width * 0.3, 15);
+        await wait(850);
+        await moveClawVertical(claw, travelY, 500);
+      }
+
+      function release(bead, status, vx = 0, vy = 0) {
+        if (bead.heldBy) {
+          const hook = hookPosition(bead.heldBy);
+          const rotation = bead.heldBy.sway * 0.45;
+          bead.x = hook.x + Math.sin(rotation) * 28;
+          bead.y = hook.y + Math.cos(rotation) * 28;
+        }
+        bead.heldBy = null;
+        bead.status = status;
+        bead.vx = vx;
+        bead.vy = vy;
+        bead.dynamic = true;
+        bead.settledFor = 0;
+        requestFrame();
+      }
+
+      function wait(milliseconds) {
+        return new Promise((resolve) => window.setTimeout(resolve, reducedMotion ? 20 : milliseconds));
+      }
+
+      async function spawnOpen() {
+        const bead = findBead('b-31');
+        const box = layout();
+        bead.visible = true;
+        bead.status = 'open';
+        bead.x = (box.open.left + box.open.right) / 2;
+        bead.y = box.open.top - 50;
+        bead.vx = -12;
+        bead.vy = 0;
+        bead.dynamic = true;
+        requestFrame();
+        await wait(1100);
+      }
+
+      async function claimOpenBead() {
+        const bead = findBead('b-31');
+        const box = layout();
+        await enterClaw(mainClaw, bead.x);
+        await pickBead(mainClaw, bead);
+        await moveClawHorizontal(mainClaw, box.progress.firstX, 680);
+        await moveClawVertical(mainClaw, box.progress.homeY, 500);
+        mainClaw.homeX = box.progress.firstX;
+        bead.progressPulse = 1;
+        requestFrame();
+        await wait(550);
+      }
+
+      async function unclaimBead() {
+        const bead = findBead('b-31');
+        const box = layout();
+        await dropBead(
+          mainClaw,
+          bead,
+          box.open.left + (box.open.right - box.open.left) * 0.78,
+          box.open.top - 52,
+          'open'
+        );
+        await exitClaw(mainClaw);
+      }
+
+      async function addBlockingDependency() {
+        const bead = findBead('b-31');
+        const box = layout();
+        await enterClaw(mainClaw, bead.x);
+        await pickBead(mainClaw, bead);
+        await dropBead(mainClaw, bead, box.blocked.center, box.blocked.top - 31, 'blocked');
+        await exitClaw(mainClaw);
+      }
+
+      async function releaseBlocked() {
+        const bead = findBead('b-14');
+        const box = layout();
+        blockedGateOpen = true;
+        bead.status = 'open';
+        bead.x = box.blocked.center;
+        bead.y = box.blocked.bottom + 3;
+        bead.vx = 18;
+        bead.vy = 15;
+        bead.dynamic = true;
+        findBead('b-15').dynamic = true;
+        findBead('b-16').dynamic = true;
+        requestFrame();
+        await wait(900);
+        blockedGateOpen = false;
+        draw();
+      }
+
+      async function transferOpenToClosed() {
+        const bead = findBead('b-17');
+        const box = layout();
+        await enterClaw(mainClaw, bead.x);
+        await pickBead(mainClaw, bead);
+        await dropBead(
+          mainClaw,
+          bead,
+          (box.closed.left + box.closed.right) / 2,
+          box.closed.top - 55,
+          'closed'
+        );
+        await exitClaw(mainClaw);
+      }
+
+      async function deferBead() {
+        const bead = findBead('b-22');
+        const box = layout();
+        await enterClaw(mainClaw, bead.x);
+        await pickBead(mainClaw, bead);
+        await dropBead(mainClaw, bead, box.rut.center, box.floorY - 95, 'deferred');
+        await exitClaw(mainClaw);
+      }
+
+      async function wakeDeferredBead() {
+        const bead = findBead('b-22');
+        const box = layout();
+        await enterClaw(mainClaw, bead.x);
+        await pickBead(mainClaw, bead);
+        await dropBead(
+          mainClaw,
+          bead,
+          box.open.left + (box.open.right - box.open.left) * 0.52,
+          box.open.top - 52,
+          'open'
+        );
+        await exitClaw(mainClaw);
+      }
+
+      async function rejectWork() {
+        const bead = findBead('b-08');
+        await articulateClaw(workClaw, 1, 280);
+        release(bead, 'failed', width * 0.08, 20);
+        rejectedPulse = 1;
+        requestFrame();
+        await wait(1050);
+        await exitClaw(workClaw);
+      }
+
+      async function reopenBead() {
+        const bead = findBead('b-02');
+        const box = layout();
+        await enterClaw(mainClaw, bead.x);
+        await pickBead(mainClaw, bead);
+        await dropBead(
+          mainClaw,
+          bead,
+          box.open.left + (box.open.right - box.open.left) * 0.26,
+          box.open.top - 52,
+          'open'
+        );
+        await exitClaw(mainClaw);
+      }
+
+      async function deleteBead() {
+        const bead = findBead('b-03');
+        bead.activityPulse = 1;
+        requestFrame();
+        await wait(420);
+        const startScale = bead.scale;
+        await tween(620, (amount) => {
+          bead.scale = startScale * (1 - amount);
+        });
+        bead.visible = false;
+        bead.status = 'deleted';
+        draw();
+      }
+
+      async function commentOnBead() {
+        const bead = findBead('b-22');
+        bead.activityPulse = 1;
+        bead.commentPulse = 1;
+        requestFrame();
+        await wait(1350);
+      }
+
+      function element(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = String(text);
+        return node;
+      }
+
+      function option(text, value) {
+        const node = element('option', '', text);
+        node.value = value;
+        return node;
+      }
+
+      async function fetchJSON(path) {
+        const response = await fetch(path, { headers: { accept: 'application/json' } });
+        let data;
+        try {
+          data = await response.json();
+        } catch {
+          data = { error: `${response.status} ${response.statusText}` };
+        }
+        if (!response.ok) throw new Error(data.detail || data.error || `${response.status} ${response.statusText}`);
+        return data;
+      }
+
+      function liveStatus(record) {
+        const failed = record.status === 'closed' && (
+          record.metadata?.['gc.outcome'] === 'fail' ||
+          record.metadata?.['gc.work_outcome'] === 'failed' ||
+          /failed|failure/i.test(record.metadata?.close_reason || '')
+        );
+        if (failed) return 'failed';
+        if (record.status === 'closed') return 'closed';
+        if (record.defer_until && new Date(record.defer_until) > new Date()) return 'deferred';
+        if (record.status === 'in_progress') return 'in_progress';
+        if (record.is_blocked === true) return 'blocked';
+        return 'open';
+      }
+
+      function placeLiveGroup(records, status, area, maximumColumns) {
+        if (!records.length) return;
+        const areaWidth = Math.max(1, area.right - area.left);
+        const areaHeight = Math.max(1, area.bottom - area.top);
+        const idealColumns = Math.ceil(Math.sqrt(records.length * areaWidth / areaHeight));
+        const columns = Math.max(1, Math.min(maximumColumns, records.length, idealColumns));
+        const rows = Math.max(1, Math.ceil(records.length / columns));
+        const radius = Math.max(4, Math.min(9, areaWidth / columns * 0.28, areaHeight / rows * 0.28));
+        records.forEach((record, index) => {
+          const column = index % columns;
+          const row = Math.floor(index / columns);
+          const x = area.left + (column + 0.5) * areaWidth / columns;
+          const y = area.bottom - (row + 0.5) * areaHeight / rows;
+          makeBead(record.id, status, x, y, { record, radius });
+        });
+      }
+
+      function matchesLiveFilters(record) {
+        const type = typeSelect.value;
+        if (type && (record.issue_type || 'task') !== type) return false;
+        const search = searchInput.value.trim().toLocaleLowerCase();
+        if (!search) return true;
+        const text = [
+          record.id,
+          record.title,
+          record.assignee,
+          record.description,
+          record.issue_type,
+          ...(record.labels || [])
+        ].filter(Boolean).join(' ').toLocaleLowerCase();
+        return text.includes(search);
+      }
+
+      function closeDetails() {
+        selectedBead = null;
+        details.hidden = true;
+        draw();
+      }
+
+      function applyLiveRecords() {
+        if (!initialized || !width) {
+          requestAnimationFrame(applyLiveRecords);
+          return;
+        }
+
+        const box = layout();
+        const visibleRecords = liveRecords.filter(matchesLiveFilters);
+        const grouped = {
+          blocked: [],
+          open: [],
+          in_progress: [],
+          closed: [],
+          deferred: [],
+          failed: []
+        };
+        visibleRecords.forEach((record) => grouped[liveStatus(record)].push(record));
+
+        beads.length = 0;
+        tweens.length = 0;
+        hoveredBead = null;
+        selectedBead = null;
+        tooltip.hidden = true;
+        details.hidden = true;
+        blockedGateOpen = false;
+        rejectedPulse = 0;
+
+        mainClaw.visible = false;
+        mainClaw.x = box.progress.firstX;
+        mainClaw.y = box.progress.homeY;
+        mainClaw.homeX = box.progress.firstX;
+        mainClaw.homeY = box.progress.homeY;
+        workClaw.visible = true;
+        workClaw.x = box.progress.secondX;
+        workClaw.y = box.progress.homeY;
+        workClaw.homeX = box.progress.secondX;
+        workClaw.homeY = box.progress.homeY;
+        workClaw.open = grouped.in_progress.length ? 0 : 1;
+
+        placeLiveGroup(grouped.blocked, 'blocked', {
+          left: box.blocked.left - 13,
+          right: box.blocked.right + 13,
+          top: box.blocked.top + 15,
+          bottom: box.blocked.bottom - 8
+        }, 3);
+        placeLiveGroup(grouped.open, 'open', {
+          left: box.open.left + 9,
+          right: box.open.right - 9,
+          top: box.open.top + 10,
+          bottom: box.open.bottom - 8
+        }, 9);
+
+        const progressRecords = [...grouped.in_progress];
+        const heldRecord = progressRecords.shift();
+        if (heldRecord) {
+          makeBead(heldRecord.id, 'in_progress', workClaw.x, workClaw.y + 27, {
+            heldBy: workClaw,
+            record: heldRecord,
+            radius: 9
+          });
+        }
+        placeLiveGroup(progressRecords, 'in_progress', {
+          left: box.open.right + 16,
+          right: box.closed.left - 16,
+          top: box.railY + 55,
+          bottom: box.open.top - 24
+        }, 9);
+
+        placeLiveGroup(grouped.closed, 'closed', {
+          left: box.closed.left + 8,
+          right: box.closed.right - 8,
+          top: box.closed.top + 10,
+          bottom: box.closed.bottom - 8
+        }, 8);
+
+        const groundRecords = [...grouped.deferred, ...grouped.failed];
+        const groundWidth = width * 0.42;
+        groundRecords.forEach((record, index) => {
+          const columns = Math.min(14, Math.max(1, groundRecords.length));
+          const row = Math.floor(index / columns);
+          const column = index % columns;
+          const x = width * 0.36 + (column + 0.5) * groundWidth / columns;
+          const y = groundHeightAt(x) - 8 - row * 15;
+          const status = liveStatus(record);
+          makeBead(record.id, status, x, y, { record, radius: groundRecords.length > 20 ? 5 : 7 });
+        });
+
+        const shown = visibleRecords.length;
+        const loadedNote = liveRecords.length < liveTotal ? ` · newest ${liveRecords.length} loaded` : '';
+        eventLine.textContent = `Live · ${citySelect.value} · ${shown} shown of ${liveTotal}${loadedNote} · updated ${new Date().toLocaleTimeString()}`;
+        motionNote.textContent = 'Live city · 15s refresh';
+        draw();
+      }
+
+      function updateTypeOptions() {
+        const selected = typeSelect.value;
+        const types = [...new Set(liveRecords.map((record) => record.issue_type || 'task'))].sort();
+        typeSelect.replaceChildren(option('All types', ''));
+        types.forEach((type) => typeSelect.append(option(type, type)));
+        if (types.includes(selected)) typeSelect.value = selected;
+      }
+
+      async function loadLiveBeads() {
+        if (!citySelect.value) return;
+        const request = ++liveRequest;
+        refreshButton.disabled = true;
+        eventLine.textContent = `Loading beads from ${citySelect.value}…`;
+        const query = new URLSearchParams({ city: citySelect.value, limit: '100' });
+        try {
+          let data;
+          if (closedToggle.checked) {
+            const allQuery = new URLSearchParams(query);
+            allQuery.set('all', 'true');
+            const [allData, activeData] = await Promise.all([
+              fetchJSON(`/api/beads?${allQuery}`),
+              fetchJSON(`/api/beads?${query}`)
+            ]);
+            const records = new Map((allData.items || []).map((record) => [record.id, record]));
+            (activeData.items || []).forEach((record) => records.set(record.id, record));
+            data = { ...allData, items: [...records.values()] };
+          } else {
+            data = await fetchJSON(`/api/beads?${query}`);
+          }
+          if (request !== liveRequest || viewMode !== 'live') return;
+          liveRecords = data.items || [];
+          liveTotal = data.total ?? liveRecords.length;
+          updateTypeOptions();
+          applyLiveRecords();
+        } catch (error) {
+          eventLine.textContent = `Live city unavailable — ${error.message}`;
+          motionNote.textContent = 'Connection error';
+        } finally {
+          refreshButton.disabled = false;
+        }
+      }
+
+      function scheduleLiveRefresh() {
+        clearInterval(liveTimer);
+        if (viewMode === 'live') liveTimer = window.setInterval(loadLiveBeads, 15000);
+      }
+
+      function setMode(mode) {
+        viewMode = mode;
+        const live = mode === 'live';
+        citySelect.hidden = !live;
+        refreshButton.hidden = !live;
+        toolbar.hidden = !live;
+        nextButton.hidden = live;
+        modeButton.textContent = live ? 'Demo events' : 'Live city';
+        tooltip.hidden = true;
+        details.hidden = true;
+        selectedBead = null;
+        hoveredBead = null;
+        if (live) {
+          if (liveRecords.length) applyLiveRecords();
+          else void loadLiveBeads();
+        } else {
+          clearInterval(liveTimer);
+          if (initialized && width) initializeScene();
+          eventLine.textContent = 'Journal ready — advance one event at a time.';
+          motionNote.textContent = reducedMotion ? 'Reduced motion' : 'Gravity on';
+          nextButton.textContent = 'Run next event';
+        }
+        scheduleLiveRefresh();
+      }
+
+      async function initializeLiveViewer() {
+        try {
+          const [config, cities] = await Promise.all([fetchJSON('/api/config'), fetchJSON('/api/cities')]);
+          citySelect.replaceChildren();
+          (cities.items || []).forEach((city) => {
+            const cityOption = option(city.name, city.name);
+            cityOption.disabled = city.running === false;
+            citySelect.append(cityOption);
+          });
+          if (!citySelect.options.length) throw new Error('No running cities found');
+          const requestedCity = new URLSearchParams(location.search).get('city');
+          const preferredCity = requestedCity || config.defaultCity;
+          if (preferredCity && [...citySelect.options].some((option) => option.value === preferredCity)) {
+            citySelect.value = preferredCity;
+          }
+          setMode('live');
+        } catch (error) {
+          setMode('demo');
+          eventLine.textContent = `Demo mode · ${error.message}`;
+        }
+      }
+
+      function canvasPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (event.clientX - rect.left) * width / rect.width,
+          y: (event.clientY - rect.top) * height / rect.height
+        };
+      }
+
+      function beadAtPoint(point) {
+        return [...beads].reverse().find((bead) => {
+          if (!bead.visible) return false;
+          return Math.hypot(point.x - bead.x, point.y - bead.y) <= bead.radius * bead.scale + 7;
+        }) || null;
+      }
+
+      function showTooltip(bead) {
+        const record = bead.record;
+        tooltip.replaceChildren(
+          element('span', '', `${record.id} · ${record.issue_type || 'task'}${record.priority === undefined || record.priority === null ? '' : ` · P${record.priority}`}`),
+          element('strong', '', record.title || record.id),
+          element('span', '', `${record.status || bead.status}${record.assignee ? ` · ${record.assignee}` : ''}`)
+        );
+        tooltip.hidden = false;
+        const maxLeft = Math.max(10, width - Math.min(310, width - 20) - 10);
+        tooltip.style.left = `${Math.max(10, Math.min(bead.x + 12, maxLeft))}px`;
+        tooltip.style.top = `${Math.max(10, bead.y - 64)}px`;
+      }
+
+      function detailSection(title) {
+        const section = element('section', 'bef-details-section');
+        section.append(element('h4', '', title));
+        return section;
+      }
+
+      function addDetailField(list, label, value) {
+        list.append(element('dt', '', label), element('dd', '', value || '—'));
+      }
+
+      function formatDate(value) {
+        if (!value) return '—';
+        const date = new Date(value);
+        return Number.isNaN(date.valueOf()) ? value : date.toLocaleString();
+      }
+
+      function renderDetails(record, deps = { children: [] }) {
+        detailsID.textContent = record.id;
+        detailsTitle.textContent = record.title || record.id;
+        detailsBody.replaceChildren();
+
+        const facts = detailSection('Record');
+        const grid = element('dl', 'bef-detail-grid');
+        addDetailField(grid, 'Status', record.status);
+        addDetailField(grid, 'Type', record.issue_type || 'task');
+        addDetailField(grid, 'Priority', record.priority === undefined || record.priority === null ? '—' : `P${record.priority}`);
+        addDetailField(grid, 'Assignee', record.assignee);
+        addDetailField(grid, 'Created', formatDate(record.created_at));
+        addDetailField(grid, 'Updated', formatDate(record.updated_at));
+        addDetailField(grid, 'Deferred', formatDate(record.defer_until));
+        addDetailField(grid, 'Parent', record.parent);
+        facts.append(grid);
+        detailsBody.append(facts);
+
+        if (record.description) {
+          const description = detailSection('Description');
+          description.append(element('p', '', record.description));
+          detailsBody.append(description);
+        }
+
+        const labels = detailSection('Labels');
+        const chips = element('div', 'bef-chips');
+        (record.labels || []).forEach((label) => chips.append(element('span', 'bef-chip', label)));
+        labels.append(chips.childElementCount ? chips : element('p', '', 'No labels.'));
+        detailsBody.append(labels);
+
+        const relationships = detailSection('Relationships');
+        const relationshipLines = [];
+        (record.dependencies || []).forEach((dependency) => {
+          relationshipLines.push(`${dependency.type || 'depends on'} · ${dependency.depends_on_id || dependency.depends_on || 'unknown'}`);
+        });
+        (deps.children || []).forEach((child) => relationshipLines.push(`child · ${child.id} · ${child.title}`));
+        relationships.append(element('p', '', relationshipLines.length ? relationshipLines.join('\n') : 'No relationships returned.'));
+        detailsBody.append(relationships);
+
+        const metadataEntries = Object.entries(record.metadata || {}).sort(([left], [right]) => left.localeCompare(right));
+        if (metadataEntries.length) {
+          const metadata = detailSection(`Metadata · ${metadataEntries.length}`);
+          const table = element('table', 'bef-metadata');
+          const body = document.createElement('tbody');
+          metadataEntries.forEach(([key, value]) => {
+            const row = document.createElement('tr');
+            row.append(element('th', '', key), element('td', '', value));
+            body.append(row);
+          });
+          table.append(body);
+          metadata.append(table);
+          detailsBody.append(metadata);
+        }
+      }
+
+      async function selectBead(bead) {
+        selectedBead = bead;
+        details.hidden = false;
+        renderDetails(bead.record);
+        draw();
+        if (viewMode !== 'live') return;
+        const selectionID = bead.id;
+        const query = new URLSearchParams({ city: citySelect.value });
+        try {
+          const [record, deps] = await Promise.all([
+            fetchJSON(`/api/bead/${encodeURIComponent(selectionID)}?${query}`),
+            fetchJSON(`/api/bead/${encodeURIComponent(selectionID)}/deps?${query}`).catch(() => ({ children: [] }))
+          ]);
+          if (selectedBead?.id === selectionID) renderDetails(record, deps);
+        } catch (error) {
+          if (selectedBead?.id === selectionID) {
+            const failure = detailSection('Unable to load details');
+            failure.append(element('p', '', error.message));
+            detailsBody.append(failure);
+          }
+        }
+      }
+
+      const events = [
+        { label: '<strong>create</strong> · b-31 enters the open queue', run: spawnOpen },
+        { label: '<strong>update · claim</strong> · b-31 moves open → in progress', run: claimOpenBead },
+        { label: '<strong>update · unclaim</strong> · b-31 returns to open', run: unclaimBead },
+        { label: '<strong>dep_add</strong> · b-31 gains a blocking dependency', run: addBlockingDependency },
+        { label: '<strong>dep_remove + update</strong> · b-14 becomes ready', run: releaseBlocked },
+        { label: '<strong>update · defer</strong> · b-22 moves out of the active queue', run: deferBead },
+        { label: '<strong>update · wake</strong> · b-22 returns to open', run: wakeDeferredBead },
+        { label: '<strong>close</strong> · b-17 is carried to completed', run: transferOpenToClosed },
+        { label: '<strong>close · failure reason</strong> · b-08 drops to the failed-close rut', run: rejectWork },
+        { label: '<strong>update · reopen</strong> · b-02 returns to open', run: reopenBead },
+        { label: '<strong>delete</strong> · b-03 is removed', run: deleteBead },
+        { label: '<strong>comment</strong> · b-22 receives a new note', run: commentOnBead }
+      ];
+
+      async function runNextEvent() {
+        if (step >= events.length) initializeScene();
+        const event = events[step];
+        nextButton.disabled = true;
+        motionNote.textContent = 'Physics running';
+        eventLine.innerHTML = `Event ${step + 1} of ${events.length} — ${event.label}`;
+        await event.run();
+        step += 1;
+        nextButton.disabled = false;
+        nextButton.textContent = step >= events.length ? 'Replay events' : 'Run next event';
+        motionNote.textContent = reducedMotion ? 'Reduced motion' : 'Gravity on';
+        draw();
+      }
+
+      nextButton.addEventListener('click', runNextEvent);
+      refreshButton.addEventListener('click', loadLiveBeads);
+      modeButton.addEventListener('click', () => setMode(viewMode === 'live' ? 'demo' : 'live'));
+      citySelect.addEventListener('change', () => {
+        const url = new URL(location.href);
+        url.searchParams.set('city', citySelect.value);
+        history.replaceState(null, '', url);
+        void loadLiveBeads();
+      });
+      closedToggle.addEventListener('change', loadLiveBeads);
+      searchInput.addEventListener('input', applyLiveRecords);
+      typeSelect.addEventListener('change', applyLiveRecords);
+      detailsClose.addEventListener('click', closeDetails);
+      canvas.addEventListener('pointermove', (event) => {
+        const bead = beadAtPoint(canvasPoint(event));
+        if (bead === hoveredBead) return;
+        hoveredBead = bead;
+        canvas.style.cursor = bead ? 'pointer' : 'default';
+        if (bead) showTooltip(bead);
+        else tooltip.hidden = true;
+        draw();
+      });
+      canvas.addEventListener('pointerleave', () => {
+        hoveredBead = null;
+        tooltip.hidden = true;
+        canvas.style.cursor = 'default';
+        draw();
+      });
+      canvas.addEventListener('click', (event) => {
+        const bead = beadAtPoint(canvasPoint(event));
+        if (bead) void selectBead(bead);
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !details.hidden) closeDetails();
+      });
+      new ResizeObserver(resize).observe(stage);
+      new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+      void initializeLiveViewer();
+    })();
+  </script>
+</div>
+
+<script src="https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js"></script>
+<script src="https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js"></script>
+<script>
+(() => {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set(["top", "right", "bottom", "left"]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =>
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest("[data-tooltip]")
+      : null;
+  const containsTarget = (trigger, target) =>
+    target?.nodeType != null && trigger.contains(target);
+  const getContent = (trigger) =>
+    trigger.getAttribute("data-tooltip")?.trim() ?? "";
+  const getPlacement = (trigger) => {
+    const placement = trigger.getAttribute("data-tooltip-placement");
+    return tooltipPlacements.has(placement) ? placement : "top";
+  };
+  const getTooltip = () => {
+    if (tooltip == null) {
+      tooltip = document.createElement("div");
+      tooltip.id = tooltipId;
+      tooltip.className = "tooltip";
+      tooltip.setAttribute("role", "tooltip");
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) => {
+    const ids = new Set(
+      (trigger.getAttribute("aria-describedby") ?? "")
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute("aria-describedby");
+    } else {
+      trigger.setAttribute("aria-describedby", [...ids].join(" "));
+    }
+  };
+  const clearOpenTimeout = () => {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) => {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) => {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              "--tooltip-available-width",
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              "--tooltip-available-height",
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: "fixed",
+    })
+      .then(({ x, y }) => {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = "visible";
+      })
+      .catch(() => {
+        if (activeTrigger === trigger && request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) => {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = "hidden";
+    floating.style.transform = "translate(0, 0)";
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () => {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) => {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() < skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() => {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) => {
+    if (event.pointerType === "touch") {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) => {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) => {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(":focus-visible")) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) => {
+    if (event.key === "Escape") {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) => {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () => {
+    closeTooltip(false);
+    document.removeEventListener("pointerover", handlePointerOpen);
+    document.removeEventListener("pointerout", handleLeave);
+    document.removeEventListener("focusin", handleFocusIn);
+    document.removeEventListener("focusout", handleLeave);
+    document.removeEventListener("keydown", handleKeyDown);
+    document.removeEventListener("contextmenu", handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener("pointerover", handlePointerOpen);
+  document.addEventListener("pointerout", handleLeave);
+  document.addEventListener("focusin", handleFocusIn);
+  document.addEventListener("focusout", handleLeave);
+  document.addEventListener("keydown", handleKeyDown);
+  document.addEventListener("contextmenu", handleContextMenu);
+  window.addEventListener("pagehide", destroy, { once: true });
+})();
+</script>
+<script id="codex-visualization-lucide" async src="https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js"></script>
+<script>
+(() => {
+  const initialize = () => {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById("codex-visualization-lucide")
+    ?.addEventListener("load", initialize, { once: true });
+})();
+</script>
+
+</body>
 </html>

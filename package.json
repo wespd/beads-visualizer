@@ -7,11 +7,15 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "node --watch server.mjs",
-    "check": "node --check server.mjs && node --check public/app.js && node --check public/model.js",
-    "test": "node --test"
+    "check": "node --check server.mjs && node scripts/check-html.mjs",
+    "test": "node --test",
+    "test:live": "node scripts/live-smoke.mjs"
   },
   "engines": {
     "node": ">=20"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "happy-dom": "^20.12.0"
+  }
 }

@@ -1,53 +1,73 @@
-# Beads Visualizer
+# Beads Event Factory
 
-A live, read-only viewer for Beads work graphs exposed by a running [Gas City](https://github.com/gastownhall/gascity). It turns the article's Beads factory concept into a reusable application backed by real city data.
+The existing Beads Event Factory visualizer, extracted from the Gas City blog demo and extended into a live, read-only Beads viewer.
 
-## What it does
+The canvas, factory machinery, bins, claws, physics, visual design, and twelve-event journal playback are the original visualizer. The standalone viewer adds live city data, filters, hover summaries, and click details without replacing that design.
 
-- Discovers supervisor-managed cities.
-- Shows open, in-progress, blocked, deferred, and closed beads in status lanes.
-- Draws dependency links when both beads are visible.
-- Filters by city, status, type, ID, title, assignee, description, or label.
-- Shows a quick summary on hover or keyboard focus.
-- Opens full bead details, relationships, children, labels, and metadata on click.
-- Polls the city every 15 seconds and supports cursor-based paging.
-- Proxies only documented read endpoints; browser requests cannot mutate beads.
+## Provenance
 
-## Requirements
+`public/index.html` is based on the decoded inner document from:
+
+```text
+gascity/landing-page
+sites/blog.gascity.com/public/demos/beads-event-factory.html
+commit 84c59bc (Chris Sells, 2026-08-26)
+```
+
+The blog wrapper sandboxes that document in an iframe. The standalone repository serves the inner document directly so it can call the local read-only API facade.
+
+## Live viewer
+
+When a Gas City supervisor is available, the factory starts in live mode and:
+
+- discovers running cities;
+- places real beads in the original blocked funnel, open bin, work area, closed bin, and deferred/failed floor;
+- refreshes every 15 seconds;
+- filters by type or text and can include the newest closed records;
+- shows ID, title, type, priority, status, and assignee on hover;
+- shows the full record, description, labels, relationships, children, and metadata on click.
+
+The **Demo events** button returns to the original twelve-event animation. **Live city** switches back to current data.
+
+## Run
+
+Requirements:
 
 - Node.js 20 or newer.
 - Gas City 1.4.1 or newer with its supervisor API running.
 
-Check the city first:
-
 ```sh
 gc status
-gc dashboard --no-open
+npm start -- --city my-city
 ```
 
-The default supervisor API is `http://127.0.0.1:8372`.
+Open <http://127.0.0.1:4173>.
 
-## Run
+The defaults are:
+
+- viewer: `http://127.0.0.1:4173`
+- Gas City supervisor API: `http://127.0.0.1:8372`
+
+Override them when necessary:
 
 ```sh
-npm start
+npm start -- --city my-city --api http://127.0.0.1:8372 --port 4173
 ```
 
-Then open <http://127.0.0.1:4173>. The viewer discovers running cities and lets you select one.
+The viewer binds to loopback unless `--host` is explicitly supplied.
 
-To pin a city or use a non-default API:
+## Read-only boundary
 
-```sh
-npm start -- --city my-city --api http://127.0.0.1:8372
-```
+The local server exposes only:
 
-Environment variables are also supported:
+- `GET /api/config`
+- `GET /api/cities`
+- `GET /api/beads`
+- `GET /api/bead/:id`
+- `GET /api/bead/:id/deps`
+- `GET /api/bead/:id/graph`
 
-```sh
-GC_CITY_NAME=my-city GC_API_URL=http://127.0.0.1:8372 npm start
-```
-
-The viewer binds to loopback by default. Use `--host 0.0.0.0` deliberately if other machines must connect; the Gas City API remains behind the viewer's read-only proxy.
+Unknown API routes return `404`; non-read methods return `405`.
 
 ## Verify
 
@@ -55,15 +75,3 @@ The viewer binds to loopback by default. Use `--host 0.0.0.0` deliberately if ot
 npm run check
 npm test
 ```
-
-## API boundary
-
-The server exposes a deliberately small same-origin facade:
-
-- `GET /api/cities`
-- `GET /api/beads`
-- `GET /api/bead/:id`
-- `GET /api/bead/:id/deps`
-- `GET /api/bead/:id/graph`
-
-All other `/api/*` routes return `404`, and non-read methods return `405`.

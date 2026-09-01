@@ -60,7 +60,7 @@ test("serves the application shell", async (context) => {
   const response = await fetch(app.baseUrl);
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type"), /text\/html/);
-  assert.match(await response.text(), /Beads Visualizer/);
+  assert.match(await response.text(), /Beads Event Factory/);
 });
 
 test("parses command line and environment settings", () => {
