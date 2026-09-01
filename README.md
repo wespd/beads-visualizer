@@ -22,7 +22,8 @@ When a Gas City supervisor is available, the factory starts in live mode and:
 
 - discovers running cities;
 - places real beads in the original blocked funnel, open bin, work area, closed bin, and deferred/failed floor;
-- refreshes every 15 seconds;
+- refreshes every 15 seconds while preserving already-rendered beads and their motion;
+- gives newly discovered beads a slight random spawn offset before gravity takes over;
 - filters by type or text and can include the newest closed records;
 - shows ID, title, type, priority, status, and assignee on hover;
 - shows the full record, description, labels, relationships, children, and metadata on click.

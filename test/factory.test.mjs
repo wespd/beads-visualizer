@@ -24,8 +24,15 @@ test("extends the factory with live data and bead inspection", () => {
 });
 
 test("enables gravity for loose live beads", () => {
-  assert.match(html, /function enableLiveGravity\(\)/);
+  assert.match(html, /function enableLiveGravity\(beadsToActivate\)/);
   assert.match(html, /bead\.dynamic = true/);
-  assert.match(html, /enableLiveGravity\(\);/);
+  assert.match(html, /enableLiveGravity\(gravityBeads\);/);
   assert.match(html, /Gravity on · live city · 15s refresh/);
+});
+
+test("jitters new spawns and reconciles rendered beads by ID", () => {
+  assert.match(html, /function randomSpawnOffset\(radius\)/);
+  assert.match(html, /Math\.random\(\)/);
+  assert.match(html, /const previousLiveBeads = new Map/);
+  assert.match(html, /const existing = previousLiveBeads\.get\(record\.id\)/);
 });

@@ -1399,7 +1399,8 @@ html>body{padding:0}</style>
           progressPulse: 0,
           activityPulse: 0,
           commentPulse: 0,
-          scale: 1
+          scale: 1,
+          source: options.source || 'demo'
         };
         beads.push(bead);
         return bead;
@@ -2243,7 +2244,15 @@ html>body{padding:0}</style>
         return 'open';
       }
 
-      function placeLiveGroup(records, status, area, maximumColumns) {
+      function randomSpawnOffset(radius) {
+        const spread = Math.min(4, Math.max(1.5, radius * 0.45));
+        return {
+          x: (Math.random() * 2 - 1) * spread,
+          y: (Math.random() * 2 - 1) * spread * 0.35
+        };
+      }
+
+      function placeLiveGroup(records, status, area, maximumColumns, placeBead) {
         if (!records.length) return;
         const areaWidth = Math.max(1, area.right - area.left);
         const areaHeight = Math.max(1, area.bottom - area.top);
@@ -2256,17 +2265,17 @@ html>body{padding:0}</style>
           const row = Math.floor(index / columns);
           const x = area.left + (column + 0.5) * areaWidth / columns;
           const y = area.bottom - (row + 0.5) * areaHeight / rows;
-          makeBead(record.id, status, x, y, { record, radius });
+          placeBead(record, status, x, y, { radius });
         });
       }
 
-      function enableLiveGravity() {
-        beads.forEach((bead) => {
+      function enableLiveGravity(beadsToActivate) {
+        beadsToActivate.forEach((bead) => {
           if (!bead.visible || bead.heldBy) return;
           bead.dynamic = true;
           bead.settledFor = 0;
         });
-        requestFrame();
+        if (beadsToActivate.length) requestFrame();
       }
 
       function matchesLiveFilters(record) {
@@ -2309,14 +2318,52 @@ html>body{padding:0}</style>
         };
         visibleRecords.forEach((record) => grouped[liveStatus(record)].push(record));
 
+        const previousLiveBeads = new Map(
+          beads.filter((bead) => bead.source === 'live').map((bead) => [bead.id, bead])
+        );
+        const previousHoveredID = hoveredBead?.id;
+        const previousSelectedID = selectedBead?.id;
+        const gravityBeads = [];
         beads.length = 0;
         tweens.length = 0;
-        hoveredBead = null;
-        selectedBead = null;
-        tooltip.hidden = true;
-        details.hidden = true;
         blockedGateOpen = false;
         rejectedPulse = 0;
+
+        const placeLiveBead = (record, status, x, y, options = {}) => {
+          const heldBy = options.heldBy || null;
+          const existing = previousLiveBeads.get(record.id);
+          if (existing) {
+            const changedStatus = existing.status !== status;
+            const released = existing.heldBy && !heldBy;
+            existing.status = status;
+            existing.record = record;
+            existing.visible = true;
+            existing.source = 'live';
+            existing.scale = 1;
+            existing.baseRadius = options.radius || existing.baseRadius;
+            existing.radius = Math.min(existing.baseRadius, width < 520 ? 8 : 10);
+            existing.heldBy = heldBy;
+            if (heldBy) {
+              existing.dynamic = false;
+              existing.vx = 0;
+              existing.vy = 0;
+            } else if (changedStatus || released) {
+              gravityBeads.push(existing);
+            }
+            beads.push(existing);
+            return existing;
+          }
+
+          const offset = heldBy ? { x: 0, y: 0 } : randomSpawnOffset(options.radius || 9);
+          const bead = makeBead(record.id, status, x + offset.x, y + offset.y, {
+            ...options,
+            heldBy,
+            record,
+            source: 'live'
+          });
+          if (!heldBy) gravityBeads.push(bead);
+          return bead;
+        };
 
         mainClaw.visible = false;
         mainClaw.x = box.progress.firstX;
@@ -2335,20 +2382,23 @@ html>body{padding:0}</style>
           right: box.blocked.right + 13,
           top: box.blocked.top + 15,
           bottom: box.blocked.bottom - 8
-        }, 3);
+        }, 3, placeLiveBead);
         placeLiveGroup(grouped.open, 'open', {
           left: box.open.left + 9,
           right: box.open.right - 9,
           top: box.open.top + 10,
           bottom: box.open.bottom - 8
-        }, 9);
+        }, 9, placeLiveBead);
 
         const progressRecords = [...grouped.in_progress];
-        const heldRecord = progressRecords.shift();
+        const previousHeldID = [...previousLiveBeads.values()].find(
+          (bead) => bead.heldBy === workClaw && progressRecords.some((record) => record.id === bead.id)
+        )?.id;
+        const heldIndex = previousHeldID ? progressRecords.findIndex((record) => record.id === previousHeldID) : 0;
+        const [heldRecord] = progressRecords.splice(Math.max(0, heldIndex), 1);
         if (heldRecord) {
-          makeBead(heldRecord.id, 'in_progress', workClaw.x, workClaw.y + 27, {
+          placeLiveBead(heldRecord, 'in_progress', workClaw.x, workClaw.y + 27, {
             heldBy: workClaw,
-            record: heldRecord,
             radius: 9
           });
         }
@@ -2357,14 +2407,14 @@ html>body{padding:0}</style>
           right: box.closed.left - 16,
           top: box.railY + 55,
           bottom: box.open.top - 24
-        }, 9);
+        }, 9, placeLiveBead);
 
         placeLiveGroup(grouped.closed, 'closed', {
           left: box.closed.left + 8,
           right: box.closed.right - 8,
           top: box.closed.top + 10,
           bottom: box.closed.bottom - 8
-        }, 8);
+        }, 8, placeLiveBead);
 
         const groundRecords = [...grouped.deferred, ...grouped.failed];
         const groundWidth = width * 0.42;
@@ -2375,10 +2425,17 @@ html>body{padding:0}</style>
           const x = width * 0.36 + (column + 0.5) * groundWidth / columns;
           const y = groundHeightAt(x) - 8 - row * 15;
           const status = liveStatus(record);
-          makeBead(record.id, status, x, y, { record, radius: groundRecords.length > 20 ? 5 : 7 });
+          placeLiveBead(record, status, x, y, { radius: groundRecords.length > 20 ? 5 : 7 });
         });
 
-        enableLiveGravity();
+        enableLiveGravity(gravityBeads);
+
+        hoveredBead = previousHoveredID ? findBead(previousHoveredID) || null : null;
+        selectedBead = previousSelectedID ? findBead(previousSelectedID) || null : null;
+        if (hoveredBead) showTooltip(hoveredBead);
+        else tooltip.hidden = true;
+        if (selectedBead) renderDetails(selectedBead.record);
+        else details.hidden = true;
 
         const shown = visibleRecords.length;
         const loadedNote = liveRecords.length < liveTotal ? ` · newest ${liveRecords.length} loaded` : '';
