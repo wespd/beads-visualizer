@@ -100,6 +100,12 @@ test("live factory bead supports hover summary and click details", async () => {
   assert.match(window.document.getElementById("bef-details-body").textContent, /This is live city data/);
   assert.match(window.document.getElementById("bef-details-body").textContent, /source/);
 
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 338, bubbles: true }));
+  assert.equal(tooltip.hidden, true, "gravity should move the bead away from its initial position");
+  canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 384, bubbles: true }));
+  assert.equal(tooltip.hidden, false, "the bead should settle at the bottom of the open bin");
+
   window.document.getElementById("bef-mode").click();
   const nextEvent = window.document.getElementById("bef-next-event");
   assert.equal(nextEvent.hidden, false);

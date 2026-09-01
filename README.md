@@ -1,17 +1,17 @@
 # Beads Event Factory
 
-The existing Beads Event Factory visualizer, extracted from the Gas City blog demo and extended into a live, read-only Beads viewer.
+Wesley Davidson's Beads Event Factory visualizer, extracted from the Gas City blog demo and extended into a live, read-only Beads viewer.
 
 The canvas, factory machinery, bins, claws, physics, visual design, and twelve-event journal playback are the original visualizer. The standalone viewer adds live city data, filters, hover summaries, and click details without replacing that design.
 
 ## Provenance
 
-`public/index.html` is based on the decoded inner document from:
+The factory and its visual design were created by Wesley Davidson. Chris Sells adapted it to run inside the Gas City website. `public/index.html` is based on the decoded inner document from that website integration:
 
 ```text
 gascity/landing-page
 sites/blog.gascity.com/public/demos/beads-event-factory.html
-commit 84c59bc (Chris Sells, 2026-08-26)
+website integration commit 84c59bc (Chris Sells, 2026-08-26)
 ```
 
 The blog wrapper sandboxes that document in an iframe. The standalone repository serves the inner document directly so it can call the local read-only API facade.

@@ -58,6 +58,7 @@ await new Promise((resolve) => setTimeout(resolve, 250));
 const eventLine = window.document.getElementById("bef-event-line").textContent;
 assert.match(eventLine, /^Live · /, eventLine);
 if (city) assert.match(eventLine, new RegExp(`Live · ${city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} ·`));
+assert.match(window.document.getElementById("bef-motion-note").textContent, /^Gravity on · live city/);
 
 const tooltip = window.document.getElementById("bef-tooltip");
 let hit = null;

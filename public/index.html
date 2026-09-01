@@ -2260,6 +2260,15 @@ html>body{padding:0}</style>
         });
       }
 
+      function enableLiveGravity() {
+        beads.forEach((bead) => {
+          if (!bead.visible || bead.heldBy) return;
+          bead.dynamic = true;
+          bead.settledFor = 0;
+        });
+        requestFrame();
+      }
+
       function matchesLiveFilters(record) {
         const type = typeSelect.value;
         if (type && (record.issue_type || 'task') !== type) return false;
@@ -2369,10 +2378,12 @@ html>body{padding:0}</style>
           makeBead(record.id, status, x, y, { record, radius: groundRecords.length > 20 ? 5 : 7 });
         });
 
+        enableLiveGravity();
+
         const shown = visibleRecords.length;
         const loadedNote = liveRecords.length < liveTotal ? ` · newest ${liveRecords.length} loaded` : '';
         eventLine.textContent = `Live · ${citySelect.value} · ${shown} shown of ${liveTotal}${loadedNote} · updated ${new Date().toLocaleTimeString()}`;
-        motionNote.textContent = 'Live city · 15s refresh';
+        motionNote.textContent = 'Gravity on · live city · 15s refresh';
         draw();
       }
 

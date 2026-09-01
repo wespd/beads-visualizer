@@ -22,3 +22,10 @@ test("extends the factory with live data and bead inspection", () => {
   assert.match(html, /async function selectBead/);
   assert.match(html, /id="bef-details"/);
 });
+
+test("enables gravity for loose live beads", () => {
+  assert.match(html, /function enableLiveGravity\(\)/);
+  assert.match(html, /bead\.dynamic = true/);
+  assert.match(html, /enableLiveGravity\(\);/);
+  assert.match(html, /Gravity on · live city · 15s refresh/);
+});
