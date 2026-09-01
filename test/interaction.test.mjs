@@ -18,7 +18,7 @@ function response(body) {
 test("live factory bead supports hover summary and click details", async () => {
   assert.ok(factoryScript, "factory script was not found");
   const window = new Window({
-    url: "http://127.0.0.1:4173/?city=demo",
+    url: "http://127.0.0.1:4173/?city=demo&poll=500",
     settings: {
       disableCSSFileLoading: true,
       disableJavaScriptFileLoading: true,
@@ -64,12 +64,16 @@ test("live factory bead supports hover summary and click details", async () => {
     labels: ["viewer"],
     metadata: { source: "test" },
   };
+  let beadFetches = 0;
 
   window.fetch = async (input) => {
     const url = new URL(String(input), window.location.href);
     if (url.pathname === "/api/config") return response({ defaultCity: "demo" });
     if (url.pathname === "/api/cities") return response({ items: [{ name: "demo", running: true }], total: 1 });
-    if (url.pathname === "/api/beads") return response({ items: [record], total: 1 });
+    if (url.pathname === "/api/beads") {
+      beadFetches += 1;
+      return response({ items: [record], total: 1 });
+    }
     if (url.pathname === "/api/bead/demo-1/deps") return response({ children: [] });
     if (url.pathname === "/api/bead/demo-1") return response(record);
     return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
@@ -85,6 +89,7 @@ test("live factory bead supports hover summary and click details", async () => {
 
   await new Promise((resolve) => setTimeout(resolve, 40));
   assert.match(window.document.getElementById("bef-event-line").textContent, /Live · demo · 1 shown of 1/);
+  assert.equal(window.document.getElementById("bef-motion-note").textContent, "Gravity on · live city · 500ms refresh");
 
   canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 338, bubbles: true }));
   const tooltip = window.document.getElementById("bef-tooltip");
@@ -101,6 +106,7 @@ test("live factory bead supports hover summary and click details", async () => {
   assert.match(window.document.getElementById("bef-details-body").textContent, /source/);
 
   await new Promise((resolve) => setTimeout(resolve, 650));
+  assert.ok(beadFetches >= 2, "the fast polling interval should refresh live beads automatically");
   canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 338, bubbles: true }));
   assert.equal(tooltip.hidden, true, "gravity should move the bead away from its initial position");
   canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 384, bubbles: true }));

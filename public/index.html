@@ -1270,6 +1270,14 @@ html>body{padding:0}</style>
       const detailsBody = root.querySelector('#bef-details-body');
       const detailsClose = root.querySelector('#bef-details-close');
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const pollParameter = new URLSearchParams(location.search).get('poll');
+      const requestedPollMs = pollParameter === null ? Number.NaN : Number(pollParameter);
+      const livePollMs = Number.isFinite(requestedPollMs)
+        ? Math.min(60000, Math.max(500, requestedPollMs))
+        : 15000;
+      const livePollLabel = livePollMs >= 1000 && livePollMs % 1000 === 0
+        ? `${livePollMs / 1000}s`
+        : `${livePollMs}ms`;
 
       let width = 0;
       let height = 0;
@@ -2440,7 +2448,7 @@ html>body{padding:0}</style>
         const shown = visibleRecords.length;
         const loadedNote = liveRecords.length < liveTotal ? ` · newest ${liveRecords.length} loaded` : '';
         eventLine.textContent = `Live · ${citySelect.value} · ${shown} shown of ${liveTotal}${loadedNote} · updated ${new Date().toLocaleTimeString()}`;
-        motionNote.textContent = 'Gravity on · live city · 15s refresh';
+        motionNote.textContent = `Gravity on · live city · ${livePollLabel} refresh`;
         draw();
       }
 
@@ -2488,7 +2496,7 @@ html>body{padding:0}</style>
 
       function scheduleLiveRefresh() {
         clearInterval(liveTimer);
-        if (viewMode === 'live') liveTimer = window.setInterval(loadLiveBeads, 15000);
+        if (viewMode === 'live') liveTimer = window.setInterval(loadLiveBeads, livePollMs);
       }
 
       function setMode(mode) {

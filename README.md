@@ -44,6 +44,12 @@ npm start -- --city my-city
 
 Open <http://127.0.0.1:4173>.
 
+For a faster temporary polling interval, pass milliseconds in the viewer URL. The value is clamped between 500 ms and 60 seconds; the default remains 15 seconds:
+
+```text
+http://127.0.0.1:4173/?city=my-city&poll=1000
+```
+
 The defaults are:
 
 - viewer: `http://127.0.0.1:4173`

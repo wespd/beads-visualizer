@@ -27,7 +27,7 @@ test("enables gravity for loose live beads", () => {
   assert.match(html, /function enableLiveGravity\(beadsToActivate\)/);
   assert.match(html, /bead\.dynamic = true/);
   assert.match(html, /enableLiveGravity\(gravityBeads\);/);
-  assert.match(html, /Gravity on · live city · 15s refresh/);
+  assert.match(html, /Gravity on · live city · \$\{livePollLabel\} refresh/);
 });
 
 test("jitters new spawns and reconciles rendered beads by ID", () => {
@@ -35,4 +35,10 @@ test("jitters new spawns and reconciles rendered beads by ID", () => {
   assert.match(html, /Math\.random\(\)/);
   assert.match(html, /const previousLiveBeads = new Map/);
   assert.match(html, /const existing = previousLiveBeads\.get\(record\.id\)/);
+});
+
+test("supports a bounded fast polling interval", () => {
+  assert.match(html, /get\('poll'\)/);
+  assert.match(html, /Math\.min\(60000, Math\.max\(500, requestedPollMs\)\)/);
+  assert.match(html, /window\.setInterval\(loadLiveBeads, livePollMs\)/);
 });
