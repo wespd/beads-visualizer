@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Live, read-only visualizer for Beads work graphs in Gas City" />
+    <title>Beads Visualizer</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div>
+          <p class="eyebrow">Gas City</p>
+          <h1>Beads Visualizer</h1>
+        </div>
+      </div>
+      <div class="connection" id="connection" data-state="loading" role="status">
+        <span class="connection-dot" aria-hidden="true"></span>
+        <span id="connection-label">Connecting</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="control-panel" aria-label="Viewer controls">
+        <label>
+          <span>City</span>
+          <select id="city-select" aria-label="City"></select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select id="status-select" aria-label="Status filter">
+            <option value="">All active statuses</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In progress</option>
+            <option value="closed">Closed</option>
+          </select>
+        </label>
+        <label>
+          <span>Type</span>
+          <select id="type-select" aria-label="Bead type filter">
+            <option value="">All types</option>
+          </select>
+        </label>
+        <label class="search-control">
+          <span>Find a bead</span>
+          <input id="search-input" type="search" placeholder="ID, title, assignee, label…" autocomplete="off" />
+        </label>
+        <label class="check-control">
+          <input id="closed-toggle" type="checkbox" />
+          <span>Include closed</span>
+        </label>
+        <label class="check-control">
+          <input id="live-toggle" type="checkbox" checked />
+          <span>Live</span>
+        </label>
+        <button class="secondary-button" id="refresh-button" type="button">Refresh</button>
+      </section>
+
+      <section class="summary-strip" aria-label="Bead summary">
+        <div><strong id="visible-count">0</strong><span>Visible</span></div>
+        <div><strong id="ready-count">0</strong><span>Ready</span></div>
+        <div><strong id="progress-count">0</strong><span>In progress</span></div>
+        <div><strong id="blocked-count">0</strong><span>Blocked</span></div>
+        <div><strong id="closed-count">0</strong><span>Closed</span></div>
+        <p id="page-summary">Waiting for city data</p>
+      </section>
+
+      <div class="workspace">
+        <section class="factory-panel" aria-labelledby="factory-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Live work graph</p>
+              <h2 id="factory-title">The bead floor</h2>
+            </div>
+            <div class="legend" aria-label="Legend">
+              <span><i class="legend-dot ready"></i>Ready</span>
+              <span><i class="legend-dot progress"></i>In progress</span>
+              <span><i class="legend-dot blocked"></i>Blocked</span>
+              <span><i class="legend-dot closed"></i>Closed</span>
+            </div>
+          </div>
+
+          <div class="board-scroll">
+            <div class="board" id="board" aria-label="Interactive bead status visualization">
+              <div class="lane-grid" id="lane-grid"></div>
+              <svg class="dependency-layer" id="dependency-layer" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true"></svg>
+              <div class="node-layer" id="node-layer"></div>
+              <div class="empty-state" id="empty-state" hidden>
+                <strong>No beads match this view.</strong>
+                <span>Try changing the filters. The database may merely be behaving itself.</span>
+              </div>
+              <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+            </div>
+          </div>
+          <div class="panel-footer">
+            <span id="updated-at">Not yet updated</span>
+            <button class="text-button" id="load-more-button" type="button" hidden>Load more</button>
+          </div>
+        </section>
+
+        <aside class="detail-panel" id="detail-panel" aria-labelledby="detail-title">
+          <div class="detail-empty" id="detail-empty">
+            <div class="detail-orbit" aria-hidden="true"><span></span></div>
+            <h2 id="detail-title">Inspect a bead</h2>
+            <p>Hover for a quick summary. Click a bead for its full record, dependencies, children, and metadata.</p>
+          </div>
+          <div id="detail-content" hidden></div>
+        </aside>
+      </div>
+    </main>
+
+    <template id="lane-template">
+      <div class="lane">
+        <div class="lane-label"><strong></strong><span></span><b></b></div>
+      </div>
+    </template>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

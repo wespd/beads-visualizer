@@ -1,0 +1,17 @@
+{
+  "name": "beads-visualizer",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Live, read-only visualizer for Beads work graphs in Gas City",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "check": "node --check server.mjs && node --check public/app.js && node --check public/model.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
