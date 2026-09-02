@@ -31,7 +31,7 @@ When a Gas City supervisor is available, the factory starts in live mode and:
 
 The **Demo events** button returns to the original twelve-event animation. **Live city** switches back to current data.
 
-The **Showcase** button runs an explicitly synthetic, continuously changing category exercise with open, in-progress, blocked, deferred, closed, and failed-close beads. It never labels those examples as city data. Add `showcase=1` to open directly in this mode.
+The **Showcase** button runs an explicitly synthetic, continuously changing category exercise with open, in-progress, blocked, deferred, closed, and failed-close beads. Status changes use concurrent claws to pick up each changing bead and release it into its new category; they do not teleport through the bins. It never labels those examples as city data. Add `showcase=1` to open directly in this mode.
 
 ## Run
 

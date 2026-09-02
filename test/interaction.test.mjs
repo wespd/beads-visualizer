@@ -15,14 +15,35 @@ function response(body) {
   });
 }
 
-test("live factory bead supports hover summary and click details", async () => {
+test("live factory bead supports hover summary and click details", async (context) => {
   assert.ok(factoryScript, "factory script was not found");
+  const instrumentedScript = factoryScript.replace(
+    "      void initializeLiveViewer();",
+    `      Object.defineProperty(root, '__interactionState', {
+        value: () => ({
+          viewMode,
+          showcaseStep,
+          clawCount: liveWorkClaws.filter((claw) => claw.visible).length,
+          heldCount: beads.filter((bead) => bead.visible && bead.heldBy).length,
+          statuses: Object.fromEntries(['open', 'in_progress', 'blocked', 'deferred', 'closed', 'failed'].map((status) => [
+            status,
+            beads.filter((bead) => bead.visible && bead.status === status).length
+          ]))
+        })
+      });
+      void initializeLiveViewer();`,
+  );
+  assert.notEqual(instrumentedScript, factoryScript, "interaction diagnostics were not installed");
   const window = new Window({
     url: "http://127.0.0.1:4173/?city=demo&poll=500",
     settings: {
       disableCSSFileLoading: true,
       disableJavaScriptFileLoading: true,
     },
+  });
+  context.after(async () => {
+    await window.happyDOM.abort();
+    window.close();
   });
 
   const drawingContext = new Proxy(
@@ -84,12 +105,13 @@ test("live factory bead supports hover summary and click details", async () => {
   };
 
   window.document.write(documentMarkup);
+  const root = window.document.getElementById("beads-event-factory");
   const stage = window.document.getElementById("bef-stage");
   const canvas = window.document.getElementById("bef-canvas");
   const rect = { x: 0, y: 0, left: 0, top: 0, right: 900, bottom: 500, width: 900, height: 500, toJSON() {} };
   stage.getBoundingClientRect = () => rect;
   canvas.getBoundingClientRect = () => rect;
-  window.eval(factoryScript);
+  window.eval(instrumentedScript);
 
   await new Promise((resolve) => setTimeout(resolve, 40));
   assert.match(window.document.getElementById("bef-event-line").textContent, /Live · demo · 3 shown of 3/);
@@ -130,6 +152,23 @@ test("live factory bead supports hover summary and click details", async () => {
   window.document.getElementById("bef-showcase").click();
   assert.match(window.document.getElementById("bef-event-line").textContent, /Showcase · synthetic category exercise · 30 beads/);
   assert.equal(window.document.getElementById("bef-next-event").hidden, true);
+  const showcaseDeadline = Date.now() + 1000;
+  while (root.__interactionState().showcaseStep < 1 && Date.now() < showcaseDeadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  const showcaseState = root.__interactionState();
+  assert.equal(showcaseState.viewMode, "showcase");
+  assert.equal(showcaseState.showcaseStep, 1, "the first claw transfer should complete before another starts");
+  assert.equal(showcaseState.clawCount, 5, "only the five destination work claws should remain visible");
+  assert.equal(showcaseState.heldCount, 5, "every final in-progress bead should be held by one claw");
+  assert.deepEqual({ ...showcaseState.statuses }, {
+    open: 5,
+    in_progress: 5,
+    blocked: 5,
+    deferred: 5,
+    closed: 5,
+    failed: 5,
+  });
   window.document.getElementById("bef-showcase").click();
   await new Promise((resolve) => setTimeout(resolve, 10));
   assert.match(window.document.getElementById("bef-event-line").textContent, /Live · demo/);
@@ -143,6 +182,4 @@ test("live factory bead supports hover summary and click details", async () => {
   await new Promise((resolve) => setTimeout(resolve, 35));
   assert.match(window.document.getElementById("bef-event-line").textContent, /Event 1 of 12 — create/);
 
-  await window.happyDOM.abort();
-  window.close();
 });

@@ -1297,10 +1297,12 @@ html>body{padding:0}</style>
       let liveTimer = 0;
       let showcaseTimer = 0;
       let showcaseStep = 0;
+      let showcaseEpoch = 0;
       let hoveredBead = null;
       let selectedBead = null;
       const tweens = [];
       const beads = [];
+      const showcaseCancelled = Symbol('showcase-cancelled');
 
       const mainClaw = { x: 0, y: 0, open: 1, homeX: 0, homeY: 0, sway: 0, swayVelocity: 0, lastX: 0, visible: false };
       const workClaw = { x: 0, y: 0, open: 0, homeX: 0, homeY: 0, sway: 0, swayVelocity: 0, lastX: 0, visible: true };
@@ -2292,6 +2294,133 @@ html>body{padding:0}</style>
         });
       }
 
+      function ensureShowcaseActive(epoch) {
+        if (viewMode !== 'showcase' || epoch !== showcaseEpoch) throw showcaseCancelled;
+      }
+
+      async function awaitShowcase(promise, epoch) {
+        await promise;
+        ensureShowcaseActive(epoch);
+      }
+
+      async function pauseShowcase(milliseconds, epoch) {
+        await new Promise((resolve) => window.setTimeout(resolve, reducedMotion ? 0 : milliseconds));
+        ensureShowcaseActive(epoch);
+      }
+
+      function showcaseDestination(record, records) {
+        const box = layout();
+        const status = liveStatus(record);
+        const sameStatus = records.filter((candidate) => liveStatus(candidate) === status);
+        const index = Math.max(0, sameStatus.findIndex((candidate) => candidate.id === record.id));
+        const fraction = (index + 1) / (sameStatus.length + 1);
+
+        if (status === 'in_progress') {
+          const workLeft = box.open.right + 34;
+          const workRight = box.closed.left - 34;
+          return {
+            status,
+            x: sameStatus.length === 1 ? box.progress.secondX : workLeft + index * (workRight - workLeft) / (sameStatus.length - 1),
+            y: box.progress.homeY,
+            held: true
+          };
+        }
+        if (status === 'blocked') {
+          return {
+            status,
+            x: box.blocked.left + 10 + fraction * Math.max(1, box.blocked.right - box.blocked.left - 20),
+            y: box.blocked.top - 38
+          };
+        }
+        if (status === 'open') {
+          return {
+            status,
+            x: box.open.left + 12 + fraction * Math.max(1, box.open.right - box.open.left - 24),
+            y: box.open.top - 50
+          };
+        }
+        if (status === 'closed') {
+          return {
+            status,
+            x: box.closed.left + 12 + fraction * Math.max(1, box.closed.right - box.closed.left - 24),
+            y: box.closed.top - 50
+          };
+        }
+
+        const groundRecords = records.filter((candidate) => {
+          const candidateStatus = liveStatus(candidate);
+          return candidateStatus === 'deferred' || candidateStatus === 'failed';
+        });
+        const groundIndex = Math.max(0, groundRecords.findIndex((candidate) => candidate.id === record.id));
+        const groundFraction = (groundIndex + 1) / (groundRecords.length + 1);
+        return {
+          status,
+          x: width * (0.34 + groundFraction * 0.46),
+          y: box.floorY - 92
+        };
+      }
+
+      async function moveShowcaseBead(previousRecord, nextRecord, records, stagger, epoch) {
+        await pauseShowcase(stagger * 75, epoch);
+        const bead = findBead(previousRecord.id);
+        if (!bead) return;
+
+        const travelY = layout().progress.travelY;
+        const destination = showcaseDestination(nextRecord, records);
+        let claw = bead.heldBy;
+        if (!claw) {
+          claw = createLiveWorkClaw(bead.id, -45, travelY);
+          claw.open = 1;
+          claw.visible = true;
+          claw.lastX = claw.x;
+          liveWorkClaws.push(claw);
+          await awaitShowcase(moveClawHorizontal(claw, bead.x, 520), epoch);
+          await awaitShowcase(moveClawVertical(claw, bead.y - 28, 360), epoch);
+          await awaitShowcase(articulateClaw(claw, 0, 180), epoch);
+          bead.dynamic = false;
+          bead.vx = 0;
+          bead.vy = 0;
+          bead.heldBy = claw;
+          bead.status = 'in_progress';
+          bead.progressPulse = 1;
+          requestFrame();
+        }
+
+        await awaitShowcase(moveClawVertical(claw, travelY, 380), epoch);
+        await awaitShowcase(moveClawHorizontal(claw, destination.x, 720), epoch);
+
+        if (destination.held) {
+          await awaitShowcase(moveClawVertical(claw, destination.y, 380), epoch);
+          claw.homeX = destination.x;
+          claw.homeY = destination.y;
+          claw.open = 0;
+          claw.beadID = bead.id;
+          bead.record = nextRecord;
+          bead.status = 'in_progress';
+          bead.dynamic = false;
+          return;
+        }
+
+        await awaitShowcase(moveClawVertical(claw, destination.y, 340), epoch);
+        await awaitShowcase(articulateClaw(claw, 1, 180), epoch);
+        bead.record = nextRecord;
+        release(bead, destination.status, claw.sway * width * 0.18, 12);
+        await awaitShowcase(moveClawVertical(claw, travelY, 360), epoch);
+        await awaitShowcase(moveClawHorizontal(claw, -45, 520), epoch);
+        claw.visible = false;
+      }
+
+      async function animateShowcaseTransition(nextRecords, nextStep, epoch) {
+        const nextByID = new Map(nextRecords.map((record) => [record.id, record]));
+        const changes = liveRecords.filter((record) => liveStatus(record) !== liveStatus(nextByID.get(record.id)));
+        eventLine.textContent = `Showcase · ${changes.length} concurrent claw transfers · transition ${showcaseStep} → ${nextStep}`;
+        motionNote.textContent = 'Gravity on · claws moving beads between categories';
+        await Promise.all(changes.map((record, index) => (
+          moveShowcaseBead(record, nextByID.get(record.id), nextRecords, index, epoch)
+        )));
+        ensureShowcaseActive(epoch);
+      }
+
       function randomSpawnOffset(radius) {
         const spread = Math.min(4, Math.max(1.5, radius * 0.45));
         return {
@@ -2511,7 +2640,7 @@ html>body{padding:0}</style>
         const shown = visibleRecords.length;
         if (viewMode === 'showcase') {
           eventLine.textContent = `Showcase · synthetic category exercise · ${shown} beads · transition ${showcaseStep}`;
-          motionNote.textContent = 'Gravity on · showcase · 1.8s transitions';
+          motionNote.textContent = 'Gravity on · showcase · concurrent claw transfers';
         } else {
           const loadedNote = liveRecords.length < liveTotal ? ` · newest ${liveRecords.length} loaded` : '';
           eventLine.textContent = `Live · ${citySelect.value} · ${shown} shown of ${liveTotal}${loadedNote} · updated ${new Date().toLocaleTimeString()}`;
@@ -2568,24 +2697,46 @@ html>body{padding:0}</style>
         if (viewMode === 'live') liveTimer = window.setInterval(loadLiveBeads, livePollMs);
       }
 
+      function cancelShowcaseTweens() {
+        const cancelled = tweens.splice(0);
+        cancelled.forEach((activeTween) => activeTween.resolve());
+      }
+
+      async function advanceShowcase(epoch) {
+        ensureShowcaseActive(epoch);
+        const nextStep = showcaseStep + 1;
+        const nextRecords = showcaseRecords(nextStep);
+        await animateShowcaseTransition(nextRecords, nextStep, epoch);
+        ensureShowcaseActive(epoch);
+        showcaseStep = nextStep;
+        liveRecords = nextRecords;
+        liveTotal = liveRecords.length;
+        updateTypeOptions();
+        applyLiveRecords();
+        scheduleShowcase();
+      }
+
       function scheduleShowcase() {
-        clearInterval(showcaseTimer);
+        clearTimeout(showcaseTimer);
         if (viewMode !== 'showcase') return;
-        showcaseTimer = window.setInterval(() => {
-          showcaseStep += 1;
-          liveRecords = showcaseRecords(showcaseStep);
-          liveTotal = liveRecords.length;
-          updateTypeOptions();
-          applyLiveRecords();
-        }, 1800);
+        const epoch = showcaseEpoch;
+        showcaseTimer = window.setTimeout(() => {
+          void advanceShowcase(epoch).catch((error) => {
+            if (error === showcaseCancelled) return;
+            eventLine.textContent = `Showcase animation stopped — ${error.message || error}`;
+            motionNote.textContent = 'Animation error';
+          });
+        }, reducedMotion ? 80 : 900);
       }
 
       function setMode(mode) {
+        showcaseEpoch += 1;
+        if (viewMode === 'showcase') cancelShowcaseTweens();
         viewMode = mode;
         const live = mode === 'live';
         const showcase = mode === 'showcase';
         clearInterval(liveTimer);
-        clearInterval(showcaseTimer);
+        clearTimeout(showcaseTimer);
         citySelect.hidden = !live;
         refreshButton.hidden = !live;
         toolbar.hidden = !live;

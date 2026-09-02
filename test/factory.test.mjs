@@ -58,6 +58,11 @@ test("offers an explicitly synthetic showcase for every factory category", () =>
   assert.match(html, /function showcaseRecords\(step\)/);
   assert.match(html, /Showcase · synthetic category exercise/);
   assert.match(html, /this is not city data/);
+  assert.match(html, /async function animateShowcaseTransition\(nextRecords, nextStep, epoch\)/);
+  assert.match(html, /Promise\.all\(changes\.map/);
+  assert.match(html, /concurrent claw transfers/);
+  assert.match(html, /moveShowcaseBead/);
+  assert.doesNotMatch(html, /setInterval\(\(\) => \{\s+showcaseStep/);
   assert.match(html, /allQuery\.set\('limit', '40'\)/);
   assert.match(html, /function countClosed\(\) \{\s+return beads\.filter\(\(bead\) => bead\.visible && bead\.status === 'closed'\)\.length;/);
 });
