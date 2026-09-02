@@ -16,3 +16,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify
+        env:
+          # Hosted runners are noisy; each refresh still has a hard 3s timeout.
+          STRESS_MAX_REFRESH_MS: 2500

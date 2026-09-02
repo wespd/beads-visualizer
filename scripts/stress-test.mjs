@@ -4,6 +4,12 @@ import { readFile } from "node:fs/promises";
 import { Window } from "happy-dom";
 
 const html = await readFile(new URL("../public/index.html", import.meta.url), "utf8");
+const churnRefreshes = 40;
+const maxAverageRefreshMs = Number(process.env.STRESS_MAX_REFRESH_MS ?? 1000);
+assert.ok(
+  Number.isFinite(maxAverageRefreshMs) && maxAverageRefreshMs > 0,
+  "STRESS_MAX_REFRESH_MS must be a positive number",
+);
 const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map((match) => match[1]);
 const factoryScript = inlineScripts.find((script) => script.includes("const root = document.getElementById('beads-event-factory')"));
 assert.ok(factoryScript, "factory script was not found");
@@ -218,7 +224,7 @@ assert.equal(state.claws.find((claw) => claw.beadID === "stable-progress").ref, 
 
 const churnStarted = performance.now();
 let maximumClaws = state.clawCount;
-for (let cycle = 1; cycle <= 40; cycle += 1) {
+for (let cycle = 1; cycle <= churnRefreshes; cycle += 1) {
   records = recordsFor(cycle);
   previousFetches = beadFetches;
   refreshButton.click();
@@ -227,7 +233,11 @@ for (let cycle = 1; cycle <= 40; cycle += 1) {
   maximumClaws = Math.max(maximumClaws, state.clawCount);
 }
 const churnElapsed = performance.now() - churnStarted;
-assert.ok(churnElapsed < 40000, `refresh churn exceeded the one-second polling budget: ${Math.round(churnElapsed)}ms`);
+const averageRefreshMs = churnElapsed / churnRefreshes;
+assert.ok(
+  averageRefreshMs < maxAverageRefreshMs,
+  `refresh churn averaged ${Math.round(averageRefreshMs)}ms; budget is ${maxAverageRefreshMs}ms`,
+);
 
 const search = window.document.getElementById("bef-search");
 search.value = "stable-progress";
@@ -262,7 +272,7 @@ resizeObserver.callback([]);
 assertState(root, records);
 
 console.log(
-  `Stress passed: ${records.length} beads, ${maximumClaws} simultaneous claws, 40 churn refreshes averaged ${Math.round(churnElapsed / 40)}ms, failure recovery verified.`,
+  `Stress passed: ${records.length} beads, ${maximumClaws} simultaneous claws, ${churnRefreshes} churn refreshes averaged ${Math.round(averageRefreshMs)}ms, failure recovery verified.`,
 );
 await window.happyDOM.abort();
 window.close();
