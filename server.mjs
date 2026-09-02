@@ -127,6 +127,18 @@ export function createViewerServer(options = {}) {
       return;
     }
 
+    if (url.pathname === "/api/agents") {
+      try {
+        const city = requiredCity(url, defaultCity);
+        const upstream = new URL(`/v0/city/${encodeSegment(city)}/agents`, apiUrl);
+        copyAllowedParameters(url.searchParams, upstream.searchParams, ["peek", "pool", "rig", "running"]);
+        await proxyUpstream(response, upstream, timeoutMs);
+      } catch (error) {
+        sendJson(response, error.status || 500, { error: error.message });
+      }
+      return;
+    }
+
     if (url.pathname === "/api/beads") {
       try {
         const city = requiredCity(url, defaultCity);

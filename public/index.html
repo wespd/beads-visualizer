@@ -1292,6 +1292,7 @@ html>body{padding:0}</style>
       let rejectedPulse = 0;
       let viewMode = 'demo';
       let liveRecords = [];
+      let liveAgents = [];
       let liveTotal = 0;
       let liveRequest = 0;
       let liveTimer = 0;
@@ -1302,6 +1303,8 @@ html>body{padding:0}</style>
       let selectedBead = null;
       const tweens = [];
       const beads = [];
+      const liveActivityByBead = new Map();
+      const liveAgentOutputs = new Map();
       const showcaseCancelled = Symbol('showcase-cancelled');
 
       const mainClaw = { x: 0, y: 0, open: 1, homeX: 0, homeY: 0, sway: 0, swayVelocity: 0, lastX: 0, visible: false };
@@ -1915,6 +1918,14 @@ html>body{padding:0}</style>
           : [mainClaw, workClaw];
         activeClaws.forEach((claw) => {
           if (!claw.visible) return;
+          if (viewMode === 'live' && claw.working && !reducedMotion) {
+            claw.workPhase = (claw.workPhase + dt * 5.2) % (Math.PI * 2);
+            claw.y = claw.homeY + Math.sin(claw.workPhase) * 2.5;
+            active = true;
+          } else if (viewMode === 'live' && claw.workPhase) {
+            claw.workPhase = 0;
+            claw.y = claw.homeY;
+          }
           const speed = (claw.x - claw.lastX) / Math.max(dt, 0.001);
           const target = Math.max(-0.16, Math.min(0.16, -speed * 0.00032));
           claw.swayVelocity += (target - claw.sway) * 36 * dt;
@@ -2440,6 +2451,8 @@ html>body{padding:0}</style>
           sway: 0,
           swayVelocity: 0,
           lastX: x,
+          working: false,
+          workPhase: 0,
           visible: true
         };
       }
@@ -2490,6 +2503,29 @@ html>body{padding:0}</style>
         selectedBead = null;
         details.hidden = true;
         draw();
+      }
+
+      function applyLiveAgentActivity() {
+        liveActivityByBead.clear();
+        liveWorkClaws.forEach((claw) => { claw.working = false; });
+        if (viewMode !== 'live') return [];
+
+        const activeAgents = liveAgents.filter((agent) => (
+          agent.running === true && agent.state === 'working' && agent.active_bead
+        ));
+        activeAgents.forEach((agent) => {
+          const bead = findBead(agent.active_bead) || beads.find((candidate) => candidate.record?.assignee === agent.name);
+          if (!bead) return;
+          liveActivityByBead.set(bead.id, agent);
+          bead.activityPulse = 1;
+          if (agent.last_output && liveAgentOutputs.get(agent.name) !== agent.last_output) {
+            bead.commentPulse = 1;
+            liveAgentOutputs.set(agent.name, agent.last_output);
+          }
+          if (bead.heldBy) bead.heldBy.working = true;
+        });
+        if (activeAgents.length) requestFrame();
+        return activeAgents;
       }
 
       function applyLiveRecords() {
@@ -2600,6 +2636,7 @@ html>body{padding:0}</style>
           claw.homeX = x;
           claw.homeY = box.progress.homeY;
           claw.open = 0;
+          claw.working = false;
           claw.visible = true;
           claw.lastX = previousX;
           liveWorkClaws.push(claw);
@@ -2628,6 +2665,7 @@ html>body{padding:0}</style>
           placeLiveBead(record, status, x, y, { radius: groundRecords.length > 20 ? 5 : 7 });
         });
 
+        const activeAgents = applyLiveAgentActivity();
         enableLiveGravity(gravityBeads);
 
         hoveredBead = previousHoveredID ? findBead(previousHoveredID) || null : null;
@@ -2643,8 +2681,9 @@ html>body{padding:0}</style>
           motionNote.textContent = 'Gravity on · showcase · concurrent claw transfers';
         } else {
           const loadedNote = liveRecords.length < liveTotal ? ` · newest ${liveRecords.length} loaded` : '';
-          eventLine.textContent = `Live · ${citySelect.value} · ${shown} shown of ${liveTotal}${loadedNote} · updated ${new Date().toLocaleTimeString()}`;
-          motionNote.textContent = `Gravity on · live city · ${livePollLabel} refresh`;
+          const workingNote = activeAgents.length ? ` · ${activeAgents.length} working` : '';
+          eventLine.textContent = `Live · ${citySelect.value} · ${shown} shown of ${liveTotal}${loadedNote}${workingNote} · updated ${new Date().toLocaleTimeString()}`;
+          motionNote.textContent = `Gravity on · live city · ${livePollLabel} refresh${workingNote}`;
         }
         draw();
       }
@@ -2663,24 +2702,30 @@ html>body{padding:0}</style>
         refreshButton.disabled = true;
         eventLine.textContent = `Loading beads from ${citySelect.value}…`;
         const query = new URLSearchParams({ city: citySelect.value, limit: '100' });
+        const agentQuery = new URLSearchParams({ city: citySelect.value, peek: 'true' });
+        const agentsPromise = fetchJSON(`/api/agents?${agentQuery}`).catch(() => ({ items: liveAgents }));
         try {
           let data;
+          let agentData;
           if (closedToggle.checked) {
             const allQuery = new URLSearchParams(query);
             allQuery.set('all', 'true');
             allQuery.set('limit', '40');
-            const [allData, activeData] = await Promise.all([
+            const [allData, activeData, fetchedAgents] = await Promise.all([
               fetchJSON(`/api/beads?${allQuery}`),
-              fetchJSON(`/api/beads?${query}`)
+              fetchJSON(`/api/beads?${query}`),
+              agentsPromise
             ]);
             const records = new Map((allData.items || []).map((record) => [record.id, record]));
             (activeData.items || []).forEach((record) => records.set(record.id, record));
             data = { ...allData, items: [...records.values()] };
+            agentData = fetchedAgents;
           } else {
-            data = await fetchJSON(`/api/beads?${query}`);
+            [data, agentData] = await Promise.all([fetchJSON(`/api/beads?${query}`), agentsPromise]);
           }
           if (request !== liveRequest || viewMode !== 'live') return;
           liveRecords = data.items || [];
+          liveAgents = agentData.items || [];
           liveTotal = data.total ?? liveRecords.length;
           updateTypeOptions();
           applyLiveRecords();
@@ -2808,11 +2853,14 @@ html>body{padding:0}</style>
 
       function showTooltip(bead) {
         const record = bead.record;
-        tooltip.replaceChildren(
+        const activity = liveActivityByBead.get(bead.id);
+        const lines = [
           element('span', '', `${record.id} · ${record.issue_type || 'task'}${record.priority === undefined || record.priority === null ? '' : ` · P${record.priority}`}`),
           element('strong', '', record.title || record.id),
           element('span', '', `${record.status || bead.status}${record.assignee ? ` · ${record.assignee}` : ''}`)
-        );
+        ];
+        if (activity) lines.push(element('span', '', `ACTIVE · ${activity.name} · ${activity.state}`));
+        tooltip.replaceChildren(...lines);
         tooltip.hidden = false;
         const maxLeft = Math.max(10, width - Math.min(310, width - 20) - 10);
         tooltip.style.left = `${Math.max(10, Math.min(bead.x + 12, maxLeft))}px`;
@@ -2852,6 +2900,13 @@ html>body{padding:0}</style>
         addDetailField(grid, 'Parent', record.parent);
         facts.append(grid);
         detailsBody.append(facts);
+
+        const activity = liveActivityByBead.get(record.id);
+        if (activity) {
+          const liveActivity = detailSection('Live activity');
+          liveActivity.append(element('p', '', `${activity.name} · ${activity.state} · actively producing output`));
+          detailsBody.append(liveActivity);
+        }
 
         if (record.description) {
           const description = detailSection('Description');

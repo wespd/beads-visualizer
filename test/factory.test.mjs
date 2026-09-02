@@ -40,6 +40,15 @@ test("gives every in-progress bead its own live claw", () => {
   assert.match(html, /liveWorkClaws\.forEach\(drawClaw\)/);
 });
 
+test("animates honest worker activity without changing bead status", () => {
+  assert.match(html, /fetchJSON\(`\/api\/agents\?\$\{agentQuery\}`\)/);
+  assert.match(html, /agent\.state === 'working' && agent\.active_bead/);
+  assert.match(html, /bead\.activityPulse = 1/);
+  assert.match(html, /bead\.commentPulse = 1/);
+  assert.match(html, /bead\.heldBy\.working = true/);
+  assert.match(html, /ACTIVE · \$\{activity\.name\}/);
+});
+
 test("jitters new spawns and reconciles rendered beads by ID", () => {
   assert.match(html, /function randomSpawnOffset\(radius\)/);
   assert.match(html, /Math\.random\(\)/);

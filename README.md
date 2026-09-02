@@ -25,6 +25,7 @@ When a Gas City supervisor is available, the factory starts in live mode and:
 - refreshes every 15 seconds while preserving already-rendered beads and their motion;
 - gives newly discovered beads a slight random spawn offset before gravity takes over;
 - gives every in-progress bead its own work claw;
+- uses Gas City's real agent activity to bob the assigned claw, pulse the active bead, and show a speech bubble when output changes;
 - filters by type or text and can include the newest closed records;
 - shows ID, title, type, priority, status, and assignee on hover;
 - shows the full record, description, labels, relationships, children, and metadata on click.
@@ -73,6 +74,7 @@ The local server exposes only:
 
 - `GET /api/config`
 - `GET /api/cities`
+- `GET /api/agents`
 - `GET /api/beads`
 - `GET /api/bead/:id`
 - `GET /api/bead/:id/deps`

@@ -24,7 +24,10 @@ test("live factory bead supports hover summary and click details", async (contex
           viewMode,
           showcaseStep,
           clawCount: liveWorkClaws.filter((claw) => claw.visible).length,
+          workingClawCount: liveWorkClaws.filter((claw) => claw.visible && claw.working).length,
           heldCount: beads.filter((bead) => bead.visible && bead.heldBy).length,
+          activityCount: beads.filter((bead) => bead.visible && bead.activityPulse > 0).length,
+          commentCount: beads.filter((bead) => bead.visible && bead.commentPulse > 0).length,
           statuses: Object.fromEntries(['open', 'in_progress', 'blocked', 'deferred', 'closed', 'failed'].map((status) => [
             status,
             beads.filter((bead) => bead.visible && bead.status === status).length
@@ -95,6 +98,18 @@ test("live factory bead supports hover summary and click details", async (contex
     const url = new URL(String(input), window.location.href);
     if (url.pathname === "/api/config") return response({ defaultCity: "demo" });
     if (url.pathname === "/api/cities") return response({ items: [{ name: "demo", running: true }], total: 1 });
+    if (url.pathname === "/api/agents") {
+      return response({
+        items: [{
+          name: "worker-1",
+          running: true,
+          state: "working",
+          active_bead: "progress-1",
+          last_output: `working output ${beadFetches}`,
+        }],
+        total: 1,
+      });
+    }
     if (url.pathname === "/api/beads") {
       beadFetches += 1;
       return response({ items: [record, ...progressRecords], total: 3 });
@@ -114,8 +129,11 @@ test("live factory bead supports hover summary and click details", async (contex
   window.eval(instrumentedScript);
 
   await new Promise((resolve) => setTimeout(resolve, 40));
-  assert.match(window.document.getElementById("bef-event-line").textContent, /Live · demo · 3 shown of 3/);
-  assert.equal(window.document.getElementById("bef-motion-note").textContent, "Gravity on · live city · 500ms refresh");
+  assert.match(window.document.getElementById("bef-event-line").textContent, /Live · demo · 3 shown of 3 · 1 working/);
+  assert.equal(window.document.getElementById("bef-motion-note").textContent, "Gravity on · live city · 500ms refresh · 1 working");
+  assert.equal(root.__interactionState().workingClawCount, 1);
+  assert.equal(root.__interactionState().activityCount, 1);
+  assert.equal(root.__interactionState().commentCount, 1);
 
   canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 338, bubbles: true }));
   const tooltip = window.document.getElementById("bef-tooltip");

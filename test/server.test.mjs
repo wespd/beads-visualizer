@@ -16,6 +16,7 @@ async function fixture() {
     seen.push(request.url);
     response.setHeader("content-type", "application/json");
     if (request.url === "/v0/cities") response.end(JSON.stringify({ items: [{ name: "demo", running: true }], total: 1 }));
+    else if (request.url === "/v0/city/demo/agents?peek=true") response.end(JSON.stringify({ items: [{ name: "worker-1", running: true, state: "working", active_bead: "demo-1" }], total: 1 }));
     else if (request.url.startsWith("/v0/city/demo/beads?")) response.end(JSON.stringify({ items: [{ id: "demo-1", title: "One", status: "open" }], total: 1 }));
     else if (request.url === "/v0/city/demo/bead/demo-1") response.end(JSON.stringify({ id: "demo-1", title: "One", status: "open" }));
     else if (request.url === "/v0/city/demo/bead/demo-1/deps") response.end(JSON.stringify({ children: [] }));
@@ -45,6 +46,11 @@ test("proxies only the supported read endpoints", async (context) => {
   assert.match(app.seen.at(-1), /^\/v0\/city\/demo\/beads\?/);
   assert.match(app.seen.at(-1), /all=true/);
   assert.match(app.seen.at(-1), /limit=5/);
+
+  const agentsResponse = await fetch(`${app.baseUrl}/api/agents?peek=true`);
+  assert.equal(agentsResponse.status, 200);
+  assert.equal((await agentsResponse.json()).items[0].active_bead, "demo-1");
+  assert.equal(app.seen.at(-1), "/v0/city/demo/agents?peek=true");
 
   const detail = await fetch(`${app.baseUrl}/api/bead/demo-1`).then((response) => response.json());
   assert.equal(detail.title, "One");
