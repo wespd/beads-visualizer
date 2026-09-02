@@ -31,6 +31,8 @@ When a Gas City supervisor is available, the factory starts in live mode and:
 
 The **Demo events** button returns to the original twelve-event animation. **Live city** switches back to current data.
 
+The **Showcase** button runs an explicitly synthetic, continuously changing category exercise with open, in-progress, blocked, deferred, closed, and failed-close beads. It never labels those examples as city data. Add `showcase=1` to open directly in this mode.
+
 ## Run
 
 Requirements:
@@ -49,6 +51,7 @@ For a faster temporary polling interval, pass milliseconds in the viewer URL. Th
 
 ```text
 http://127.0.0.1:4173/?city=my-city&poll=1000
+http://127.0.0.1:4173/?city=my-city&showcase=1
 ```
 
 The defaults are:

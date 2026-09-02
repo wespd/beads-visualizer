@@ -36,7 +36,8 @@ test("gives every in-progress bead its own live claw", () => {
   assert.match(html, /function createLiveWorkClaw\(beadID, x, y\)/);
   assert.match(html, /progressRecords\.forEach\(\(record, index\)/);
   assert.match(html, /liveWorkClaws\.push\(claw\)/);
-  assert.match(html, /if \(viewMode === 'live'\) liveWorkClaws\.forEach\(drawClaw\)/);
+  assert.match(html, /viewMode === 'live' \|\| viewMode === 'showcase'/);
+  assert.match(html, /liveWorkClaws\.forEach\(drawClaw\)/);
 });
 
 test("jitters new spawns and reconciles rendered beads by ID", () => {
@@ -50,4 +51,13 @@ test("supports a bounded fast polling interval", () => {
   assert.match(html, /get\('poll'\)/);
   assert.match(html, /Math\.min\(60000, Math\.max\(500, requestedPollMs\)\)/);
   assert.match(html, /window\.setInterval\(loadLiveBeads, livePollMs\)/);
+});
+
+test("offers an explicitly synthetic showcase for every factory category", () => {
+  assert.match(html, /id="bef-showcase"/);
+  assert.match(html, /function showcaseRecords\(step\)/);
+  assert.match(html, /Showcase · synthetic category exercise/);
+  assert.match(html, /this is not city data/);
+  assert.match(html, /allQuery\.set\('limit', '40'\)/);
+  assert.match(html, /function countClosed\(\) \{\s+return beads\.filter\(\(bead\) => bead\.visible && bead\.status === 'closed'\)\.length;/);
 });

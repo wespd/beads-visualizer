@@ -1219,6 +1219,7 @@ html>body{padding:0}</style>
     <div class="viz-controls bef-controls">
       <select class="bef-city-select" id="bef-city" aria-label="Gas City"></select>
       <button class="btn" id="bef-refresh" type="button">Refresh</button>
+      <button class="btn" id="bef-showcase" type="button">Showcase</button>
       <button class="btn" id="bef-mode" type="button">Demo events</button>
       <button class="btn btn-primary" id="bef-next-event" type="button" hidden>Run next event</button>
     </div>
@@ -1258,6 +1259,7 @@ html>body{padding:0}</style>
       const motionNote = root.querySelector('#bef-motion-note');
       const citySelect = root.querySelector('#bef-city');
       const refreshButton = root.querySelector('#bef-refresh');
+      const showcaseButton = root.querySelector('#bef-showcase');
       const modeButton = root.querySelector('#bef-mode');
       const toolbar = root.querySelector('#bef-toolbar');
       const searchInput = root.querySelector('#bef-search');
@@ -1293,6 +1295,8 @@ html>body{padding:0}</style>
       let liveTotal = 0;
       let liveRequest = 0;
       let liveTimer = 0;
+      let showcaseTimer = 0;
+      let showcaseStep = 0;
       let hoveredBead = null;
       let selectedBead = null;
       const tweens = [];
@@ -1764,7 +1768,7 @@ html>body{padding:0}</style>
 
       function draw() {
         drawFactory();
-        if (viewMode === 'live') liveWorkClaws.forEach(drawClaw);
+        if (viewMode === 'live' || viewMode === 'showcase') liveWorkClaws.forEach(drawClaw);
         else {
           drawClaw(mainClaw);
           drawClaw(workClaw);
@@ -1777,7 +1781,7 @@ html>body{padding:0}</style>
       }
 
       function countClosed() {
-        return beads.filter((bead) => bead.visible && (bead.status === 'closed' || bead.status === 'failed')).length;
+        return beads.filter((bead) => bead.visible && bead.status === 'closed').length;
       }
 
       function countGround() {
@@ -1904,7 +1908,9 @@ html>body{padding:0}</style>
 
       function updateClawDynamics(dt) {
         let active = false;
-        const activeClaws = viewMode === 'live' ? liveWorkClaws : [mainClaw, workClaw];
+        const activeClaws = viewMode === 'live' || viewMode === 'showcase'
+          ? liveWorkClaws
+          : [mainClaw, workClaw];
         activeClaws.forEach((claw) => {
           if (!claw.visible) return;
           const speed = (claw.x - claw.lastX) / Math.max(dt, 0.001);
@@ -2258,6 +2264,34 @@ html>body{padding:0}</style>
         return 'open';
       }
 
+      function showcaseRecord(index, category, step) {
+        const id = `showcase-${String(index + 1).padStart(2, '0')}`;
+        const names = ['open', 'in progress', 'blocked', 'deferred', 'closed', 'failed close'];
+        const base = {
+          id,
+          title: `${names[category]} example ${index + 1}`,
+          issue_type: index % 3 === 0 ? 'bug' : index % 3 === 1 ? 'feature' : 'task',
+          priority: index % 5,
+          labels: ['showcase', names[category].replaceAll(' ', '-')],
+          description: `Synthetic showcase record. Transition ${step}; this is not city data.`,
+          metadata: { showcase: true, transition: step }
+        };
+        if (category === 1) return { ...base, status: 'in_progress', assignee: `worker-${index % 5 + 1}` };
+        if (category === 2) return { ...base, status: 'open', is_blocked: true };
+        if (category === 3) return { ...base, status: 'open', defer_until: '2099-01-01T00:00:00Z' };
+        if (category === 4) return { ...base, status: 'closed', metadata: { ...base.metadata, 'gc.work_outcome': 'passed' } };
+        if (category === 5) return { ...base, status: 'closed', metadata: { ...base.metadata, 'gc.work_outcome': 'failed' } };
+        return { ...base, status: 'open' };
+      }
+
+      function showcaseRecords(step) {
+        return Array.from({ length: 30 }, (_, index) => {
+          const homeCategory = Math.floor(index / 5);
+          const category = index % 5 === 0 ? (homeCategory + step) % 6 : homeCategory;
+          return showcaseRecord(index, category, step);
+        });
+      }
+
       function randomSpawnOffset(radius) {
         const spread = Math.min(4, Math.max(1.5, radius * 0.45));
         return {
@@ -2475,9 +2509,14 @@ html>body{padding:0}</style>
         else details.hidden = true;
 
         const shown = visibleRecords.length;
-        const loadedNote = liveRecords.length < liveTotal ? ` · newest ${liveRecords.length} loaded` : '';
-        eventLine.textContent = `Live · ${citySelect.value} · ${shown} shown of ${liveTotal}${loadedNote} · updated ${new Date().toLocaleTimeString()}`;
-        motionNote.textContent = `Gravity on · live city · ${livePollLabel} refresh`;
+        if (viewMode === 'showcase') {
+          eventLine.textContent = `Showcase · synthetic category exercise · ${shown} beads · transition ${showcaseStep}`;
+          motionNote.textContent = 'Gravity on · showcase · 1.8s transitions';
+        } else {
+          const loadedNote = liveRecords.length < liveTotal ? ` · newest ${liveRecords.length} loaded` : '';
+          eventLine.textContent = `Live · ${citySelect.value} · ${shown} shown of ${liveTotal}${loadedNote} · updated ${new Date().toLocaleTimeString()}`;
+          motionNote.textContent = `Gravity on · live city · ${livePollLabel} refresh`;
+        }
         draw();
       }
 
@@ -2500,6 +2539,7 @@ html>body{padding:0}</style>
           if (closedToggle.checked) {
             const allQuery = new URLSearchParams(query);
             allQuery.set('all', 'true');
+            allQuery.set('limit', '40');
             const [allData, activeData] = await Promise.all([
               fetchJSON(`/api/beads?${allQuery}`),
               fetchJSON(`/api/beads?${query}`)
@@ -2528,23 +2568,48 @@ html>body{padding:0}</style>
         if (viewMode === 'live') liveTimer = window.setInterval(loadLiveBeads, livePollMs);
       }
 
+      function scheduleShowcase() {
+        clearInterval(showcaseTimer);
+        if (viewMode !== 'showcase') return;
+        showcaseTimer = window.setInterval(() => {
+          showcaseStep += 1;
+          liveRecords = showcaseRecords(showcaseStep);
+          liveTotal = liveRecords.length;
+          updateTypeOptions();
+          applyLiveRecords();
+        }, 1800);
+      }
+
       function setMode(mode) {
         viewMode = mode;
         const live = mode === 'live';
+        const showcase = mode === 'showcase';
+        clearInterval(liveTimer);
+        clearInterval(showcaseTimer);
         citySelect.hidden = !live;
         refreshButton.hidden = !live;
         toolbar.hidden = !live;
-        nextButton.hidden = live;
-        modeButton.textContent = live ? 'Demo events' : 'Live city';
+        nextButton.hidden = mode !== 'demo';
+        modeButton.textContent = mode === 'demo' ? 'Live city' : 'Demo events';
+        showcaseButton.textContent = showcase ? 'Live city' : 'Showcase';
         tooltip.hidden = true;
         details.hidden = true;
         selectedBead = null;
         hoveredBead = null;
         if (live) {
-          if (liveRecords.length) applyLiveRecords();
-          else void loadLiveBeads();
+          liveRecords = [];
+          liveTotal = 0;
+          void loadLiveBeads();
+        } else if (showcase) {
+          searchInput.value = '';
+          typeSelect.value = '';
+          showcaseStep = 0;
+          liveRecords = showcaseRecords(showcaseStep);
+          liveTotal = liveRecords.length;
+          updateTypeOptions();
+          applyLiveRecords();
+          scheduleShowcase();
         } else {
-          clearInterval(liveTimer);
           if (initialized && width) initializeScene();
           eventLine.textContent = 'Journal ready — advance one event at a time.';
           motionNote.textContent = reducedMotion ? 'Reduced motion' : 'Gravity on';
@@ -2568,7 +2633,7 @@ html>body{padding:0}</style>
           if (preferredCity && [...citySelect.options].some((option) => option.value === preferredCity)) {
             citySelect.value = preferredCity;
           }
-          setMode('live');
+          setMode(new URLSearchParams(location.search).get('showcase') === '1' ? 'showcase' : 'live');
         } catch (error) {
           setMode('demo');
           eventLine.textContent = `Demo mode · ${error.message}`;
@@ -2728,7 +2793,8 @@ html>body{padding:0}</style>
 
       nextButton.addEventListener('click', runNextEvent);
       refreshButton.addEventListener('click', loadLiveBeads);
-      modeButton.addEventListener('click', () => setMode(viewMode === 'live' ? 'demo' : 'live'));
+      showcaseButton.addEventListener('click', () => setMode(viewMode === 'showcase' ? 'live' : 'showcase'));
+      modeButton.addEventListener('click', () => setMode(viewMode === 'demo' ? 'live' : 'demo'));
       citySelect.addEventListener('change', () => {
         const url = new URL(location.href);
         url.searchParams.set('city', citySelect.value);

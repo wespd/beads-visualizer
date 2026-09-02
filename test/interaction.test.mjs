@@ -127,6 +127,13 @@ test("live factory bead supports hover summary and click details", async () => {
   canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 384, bubbles: true }));
   assert.equal(tooltip.hidden, false, "refresh should preserve an already-rendered bead's position");
 
+  window.document.getElementById("bef-showcase").click();
+  assert.match(window.document.getElementById("bef-event-line").textContent, /Showcase · synthetic category exercise · 30 beads/);
+  assert.equal(window.document.getElementById("bef-next-event").hidden, true);
+  window.document.getElementById("bef-showcase").click();
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.match(window.document.getElementById("bef-event-line").textContent, /Live · demo/);
+
   window.document.getElementById("bef-mode").click();
   const nextEvent = window.document.getElementById("bef-next-event");
   assert.equal(nextEvent.hidden, false);
