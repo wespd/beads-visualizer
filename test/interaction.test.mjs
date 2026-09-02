@@ -66,7 +66,7 @@ test("live factory bead supports hover summary and click details", async () => {
   };
   const progressRecords = [
     { id: "progress-1", title: "Held by the work claw", status: "in_progress", issue_type: "task" },
-    { id: "progress-2", title: "Anchored in the work area", status: "in_progress", issue_type: "task" },
+    { id: "progress-2", title: "Held by another work claw", status: "in_progress", issue_type: "task" },
   ];
   let beadFetches = 0;
 
@@ -117,8 +117,8 @@ test("live factory bead supports hover summary and click details", async () => {
   assert.equal(tooltip.hidden, false, "the bead should settle at the bottom of the open bin");
 
   canvas.dispatchEvent(new window.PointerEvent("pointerleave", { bubbles: true }));
-  canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 495, clientY: 172, bubbles: true }));
-  assert.equal(tooltip.hidden, false, "additional in-progress beads should remain in the work area");
+  canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 650, clientY: 212, bubbles: true }));
+  assert.equal(tooltip.hidden, false, "every in-progress bead should remain attached to a work claw");
   assert.match(tooltip.textContent, /progress-2/);
 
   canvas.dispatchEvent(new window.PointerEvent("pointerleave", { bubbles: true }));

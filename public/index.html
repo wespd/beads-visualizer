@@ -1300,6 +1300,7 @@ html>body{padding:0}</style>
 
       const mainClaw = { x: 0, y: 0, open: 1, homeX: 0, homeY: 0, sway: 0, swayVelocity: 0, lastX: 0, visible: false };
       const workClaw = { x: 0, y: 0, open: 0, homeX: 0, homeY: 0, sway: 0, swayVelocity: 0, lastX: 0, visible: true };
+      const liveWorkClaws = [];
 
       const paletteProbe = document.createElement('span');
       paletteProbe.style.position = 'absolute';
@@ -1421,6 +1422,7 @@ html>body{padding:0}</style>
       function initializeScene() {
         const box = layout();
         beads.length = 0;
+        liveWorkClaws.length = 0;
 
         mainClaw.homeX = box.progress.firstX;
         mainClaw.homeY = box.progress.homeY;
@@ -1484,7 +1486,7 @@ html>body{padding:0}</style>
           bead.y *= scaleY;
           bead.radius = Math.min(bead.baseRadius, width < 520 ? 8 : 10);
         });
-        [mainClaw, workClaw].forEach((claw) => {
+        [mainClaw, workClaw, ...liveWorkClaws].forEach((claw) => {
           claw.x *= scaleX;
           claw.y *= scaleY;
           claw.homeX *= scaleX;
@@ -1762,8 +1764,11 @@ html>body{padding:0}</style>
 
       function draw() {
         drawFactory();
-        drawClaw(mainClaw);
-        drawClaw(workClaw);
+        if (viewMode === 'live') liveWorkClaws.forEach(drawClaw);
+        else {
+          drawClaw(mainClaw);
+          drawClaw(workClaw);
+        }
         beads.forEach(drawBead);
       }
 
@@ -1899,7 +1904,8 @@ html>body{padding:0}</style>
 
       function updateClawDynamics(dt) {
         let active = false;
-        [mainClaw, workClaw].forEach((claw) => {
+        const activeClaws = viewMode === 'live' ? liveWorkClaws : [mainClaw, workClaw];
+        activeClaws.forEach((claw) => {
           if (!claw.visible) return;
           const speed = (claw.x - claw.lastX) / Math.max(dt, 0.001);
           const target = Math.max(-0.16, Math.min(0.16, -speed * 0.00032));
@@ -2260,6 +2266,21 @@ html>body{padding:0}</style>
         };
       }
 
+      function createLiveWorkClaw(beadID, x, y) {
+        return {
+          beadID,
+          x,
+          y,
+          open: 0,
+          homeX: x,
+          homeY: y,
+          sway: 0,
+          swayVelocity: 0,
+          lastX: x,
+          visible: true
+        };
+      }
+
       function placeLiveGroup(records, status, area, maximumColumns, placeBead) {
         if (!records.length) return;
         const areaWidth = Math.max(1, area.right - area.left);
@@ -2329,17 +2350,18 @@ html>body{padding:0}</style>
         const previousLiveBeads = new Map(
           beads.filter((bead) => bead.source === 'live').map((bead) => [bead.id, bead])
         );
+        const previousLiveClaws = new Map(liveWorkClaws.map((claw) => [claw.beadID, claw]));
         const previousHoveredID = hoveredBead?.id;
         const previousSelectedID = selectedBead?.id;
         const gravityBeads = [];
         beads.length = 0;
+        liveWorkClaws.length = 0;
         tweens.length = 0;
         blockedGateOpen = false;
         rejectedPulse = 0;
 
         const placeLiveBead = (record, status, x, y, options = {}) => {
           const heldBy = options.heldBy || null;
-          const anchoredInProgress = status === 'in_progress' && !heldBy;
           const existing = previousLiveBeads.get(record.id);
           if (existing) {
             const changedStatus = existing.status !== status;
@@ -2356,13 +2378,6 @@ html>body{padding:0}</style>
               existing.dynamic = false;
               existing.vx = 0;
               existing.vy = 0;
-            } else if (anchoredInProgress) {
-              existing.x = x;
-              existing.y = y;
-              existing.dynamic = false;
-              existing.vx = 0;
-              existing.vy = 0;
-              existing.settledFor = 0;
             } else if (changedStatus || released) {
               gravityBeads.push(existing);
             }
@@ -2377,8 +2392,7 @@ html>body{padding:0}</style>
             record,
             source: 'live'
           });
-          if (anchoredInProgress) bead.dynamic = false;
-          else if (!heldBy) gravityBeads.push(bead);
+          if (!heldBy) gravityBeads.push(bead);
           return bead;
         };
 
@@ -2387,12 +2401,12 @@ html>body{padding:0}</style>
         mainClaw.y = box.progress.homeY;
         mainClaw.homeX = box.progress.firstX;
         mainClaw.homeY = box.progress.homeY;
-        workClaw.visible = true;
+        workClaw.visible = false;
         workClaw.x = box.progress.secondX;
         workClaw.y = box.progress.homeY;
         workClaw.homeX = box.progress.secondX;
         workClaw.homeY = box.progress.homeY;
-        workClaw.open = grouped.in_progress.length ? 0 : 1;
+        workClaw.open = 1;
 
         placeLiveGroup(grouped.blocked, 'blocked', {
           left: box.blocked.left - 13,
@@ -2408,23 +2422,29 @@ html>body{padding:0}</style>
         }, 9, placeLiveBead);
 
         const progressRecords = [...grouped.in_progress];
-        const previousHeldID = [...previousLiveBeads.values()].find(
-          (bead) => bead.heldBy === workClaw && progressRecords.some((record) => record.id === bead.id)
-        )?.id;
-        const heldIndex = previousHeldID ? progressRecords.findIndex((record) => record.id === previousHeldID) : 0;
-        const [heldRecord] = progressRecords.splice(Math.max(0, heldIndex), 1);
-        if (heldRecord) {
-          placeLiveBead(heldRecord, 'in_progress', workClaw.x, workClaw.y + 27, {
-            heldBy: workClaw,
+        const workLeft = box.open.right + 34;
+        const workRight = box.closed.left - 34;
+        progressRecords.forEach((record, index) => {
+          const x = progressRecords.length === 1
+            ? box.progress.secondX
+            : workLeft + index * (workRight - workLeft) / (progressRecords.length - 1);
+          const previousClaw = previousLiveClaws.get(record.id);
+          const claw = previousClaw || createLiveWorkClaw(record.id, x, box.progress.homeY);
+          const previousX = claw.x;
+          claw.beadID = record.id;
+          claw.x = x;
+          claw.y = box.progress.homeY;
+          claw.homeX = x;
+          claw.homeY = box.progress.homeY;
+          claw.open = 0;
+          claw.visible = true;
+          claw.lastX = previousX;
+          liveWorkClaws.push(claw);
+          placeLiveBead(record, 'in_progress', claw.x, claw.y + 27, {
+            heldBy: claw,
             radius: 9
           });
-        }
-        placeLiveGroup(progressRecords, 'in_progress', {
-          left: box.open.right + 16,
-          right: box.closed.left - 16,
-          top: box.railY + 55,
-          bottom: box.open.top - 24
-        }, 9, placeLiveBead);
+        });
 
         placeLiveGroup(grouped.closed, 'closed', {
           left: box.closed.left + 8,

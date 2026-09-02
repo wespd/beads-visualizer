@@ -31,11 +31,12 @@ test("enables gravity for loose live beads", () => {
   assert.match(html, /Gravity on · live city · \$\{livePollLabel\} refresh/);
 });
 
-test("anchors additional in-progress beads in the work area", () => {
-  assert.match(html, /const anchoredInProgress = status === 'in_progress' && !heldBy/);
-  assert.match(html, /else if \(anchoredInProgress\)/);
-  assert.match(html, /existing\.x = x/);
-  assert.match(html, /if \(anchoredInProgress\) bead\.dynamic = false/);
+test("gives every in-progress bead its own live claw", () => {
+  assert.match(html, /const liveWorkClaws = \[\]/);
+  assert.match(html, /function createLiveWorkClaw\(beadID, x, y\)/);
+  assert.match(html, /progressRecords\.forEach\(\(record, index\)/);
+  assert.match(html, /liveWorkClaws\.push\(claw\)/);
+  assert.match(html, /if \(viewMode === 'live'\) liveWorkClaws\.forEach\(drawClaw\)/);
 });
 
 test("jitters new spawns and reconciles rendered beads by ID", () => {
