@@ -7,9 +7,11 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "node --watch server.mjs",
-    "check": "node --check server.mjs && node scripts/check-html.mjs",
-    "test": "node --test",
-    "test:live": "node scripts/live-smoke.mjs"
+    "check": "node --check server.mjs && node --check scripts/live-smoke.mjs && node --check scripts/stress-test.mjs && node scripts/check-html.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:live": "node scripts/live-smoke.mjs",
+    "test:stress": "node scripts/stress-test.mjs",
+    "verify": "npm run check && npm test && npm run test:stress"
   },
   "engines": {
     "node": ">=20"

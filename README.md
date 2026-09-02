@@ -80,6 +80,8 @@ Unknown API routes return `404`; non-read methods return `405`.
 ## Verify
 
 ```sh
-npm run check
-npm test
+npm run verify
+npm run test:live -- --city my-city
 ```
+
+`verify` runs syntax checks, the normal test suite, and the stress harness. The stress harness drives 121 synthetic beads through rapid refreshes, status changes, additions and removals, multiple work claws, filtering, details, resizing, API failure, and recovery. It also asserts that unchanged beads and claws retain object identity across refreshes. The separate live smoke command requires a running Gas City.
