@@ -2279,7 +2279,7 @@ html>body{padding:0}</style>
 
       function enableLiveGravity(beadsToActivate) {
         beadsToActivate.forEach((bead) => {
-          if (!bead.visible || bead.heldBy) return;
+          if (!bead.visible || bead.heldBy || bead.status === 'in_progress') return;
           bead.dynamic = true;
           bead.settledFor = 0;
         });
@@ -2339,6 +2339,7 @@ html>body{padding:0}</style>
 
         const placeLiveBead = (record, status, x, y, options = {}) => {
           const heldBy = options.heldBy || null;
+          const anchoredInProgress = status === 'in_progress' && !heldBy;
           const existing = previousLiveBeads.get(record.id);
           if (existing) {
             const changedStatus = existing.status !== status;
@@ -2355,6 +2356,13 @@ html>body{padding:0}</style>
               existing.dynamic = false;
               existing.vx = 0;
               existing.vy = 0;
+            } else if (anchoredInProgress) {
+              existing.x = x;
+              existing.y = y;
+              existing.dynamic = false;
+              existing.vx = 0;
+              existing.vy = 0;
+              existing.settledFor = 0;
             } else if (changedStatus || released) {
               gravityBeads.push(existing);
             }
@@ -2369,7 +2377,8 @@ html>body{padding:0}</style>
             record,
             source: 'live'
           });
-          if (!heldBy) gravityBeads.push(bead);
+          if (anchoredInProgress) bead.dynamic = false;
+          else if (!heldBy) gravityBeads.push(bead);
           return bead;
         };
 

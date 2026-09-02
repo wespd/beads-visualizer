@@ -25,9 +25,17 @@ test("extends the factory with live data and bead inspection", () => {
 
 test("enables gravity for loose live beads", () => {
   assert.match(html, /function enableLiveGravity\(beadsToActivate\)/);
+  assert.match(html, /bead\.status === 'in_progress'/);
   assert.match(html, /bead\.dynamic = true/);
   assert.match(html, /enableLiveGravity\(gravityBeads\);/);
   assert.match(html, /Gravity on · live city · \$\{livePollLabel\} refresh/);
+});
+
+test("anchors additional in-progress beads in the work area", () => {
+  assert.match(html, /const anchoredInProgress = status === 'in_progress' && !heldBy/);
+  assert.match(html, /else if \(anchoredInProgress\)/);
+  assert.match(html, /existing\.x = x/);
+  assert.match(html, /if \(anchoredInProgress\) bead\.dynamic = false/);
 });
 
 test("jitters new spawns and reconciles rendered beads by ID", () => {

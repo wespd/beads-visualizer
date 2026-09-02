@@ -64,6 +64,10 @@ test("live factory bead supports hover summary and click details", async () => {
     labels: ["viewer"],
     metadata: { source: "test" },
   };
+  const progressRecords = [
+    { id: "progress-1", title: "Held by the work claw", status: "in_progress", issue_type: "task" },
+    { id: "progress-2", title: "Anchored in the work area", status: "in_progress", issue_type: "task" },
+  ];
   let beadFetches = 0;
 
   window.fetch = async (input) => {
@@ -72,7 +76,7 @@ test("live factory bead supports hover summary and click details", async () => {
     if (url.pathname === "/api/cities") return response({ items: [{ name: "demo", running: true }], total: 1 });
     if (url.pathname === "/api/beads") {
       beadFetches += 1;
-      return response({ items: [record], total: 1 });
+      return response({ items: [record, ...progressRecords], total: 3 });
     }
     if (url.pathname === "/api/bead/demo-1/deps") return response({ children: [] });
     if (url.pathname === "/api/bead/demo-1") return response(record);
@@ -88,7 +92,7 @@ test("live factory bead supports hover summary and click details", async () => {
   window.eval(factoryScript);
 
   await new Promise((resolve) => setTimeout(resolve, 40));
-  assert.match(window.document.getElementById("bef-event-line").textContent, /Live · demo · 1 shown of 1/);
+  assert.match(window.document.getElementById("bef-event-line").textContent, /Live · demo · 3 shown of 3/);
   assert.equal(window.document.getElementById("bef-motion-note").textContent, "Gravity on · live city · 500ms refresh");
 
   canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 338, bubbles: true }));
@@ -111,6 +115,11 @@ test("live factory bead supports hover summary and click details", async () => {
   assert.equal(tooltip.hidden, true, "gravity should move the bead away from its initial position");
   canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 384, bubbles: true }));
   assert.equal(tooltip.hidden, false, "the bead should settle at the bottom of the open bin");
+
+  canvas.dispatchEvent(new window.PointerEvent("pointerleave", { bubbles: true }));
+  canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 495, clientY: 172, bubbles: true }));
+  assert.equal(tooltip.hidden, false, "additional in-progress beads should remain in the work area");
+  assert.match(tooltip.textContent, /progress-2/);
 
   canvas.dispatchEvent(new window.PointerEvent("pointerleave", { bubbles: true }));
   window.document.getElementById("bef-refresh").click();
