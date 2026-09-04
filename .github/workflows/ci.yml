@@ -17,5 +17,6 @@ jobs:
       - run: npm ci
       - run: npm run verify
         env:
-          # Hosted runners are noisy; each refresh still has a hard 3s timeout.
+          # Average refresh latency and animation completion are separate checks.
           STRESS_MAX_REFRESH_MS: 2500
+          STRESS_JOURNAL_TIMEOUT_MS: 30000

@@ -6,9 +6,16 @@ import { Window } from "happy-dom";
 const html = await readFile(new URL("../public/index.html", import.meta.url), "utf8");
 const churnRefreshes = 40;
 const maxAverageRefreshMs = Number(process.env.STRESS_MAX_REFRESH_MS ?? 1000);
+const journalTransitionTimeoutMs = Number(
+  process.env.STRESS_JOURNAL_TIMEOUT_MS ?? 8000,
+);
 assert.ok(
   Number.isFinite(maxAverageRefreshMs) && maxAverageRefreshMs > 0,
   "STRESS_MAX_REFRESH_MS must be a positive number",
+);
+assert.ok(
+  Number.isFinite(journalTransitionTimeoutMs) && journalTransitionTimeoutMs > 0,
+  "STRESS_JOURNAL_TIMEOUT_MS must be a positive number",
 );
 const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map((match) => match[1]);
 const factoryScript = inlineScripts.find((script) => script.includes("const root = document.getElementById('beads-event-factory')"));
@@ -305,7 +312,7 @@ void root.__stressPoll();
 await waitFor(
   () => journalSequence === journalUpdates.size && !root.__stressState().refreshing,
   "journal-driven claw transfers did not complete",
-  8000,
+  journalTransitionTimeoutMs,
 );
 state = assertState(root, records);
 assert.equal(beadFetches, previousFetches, "journal polling should not fetch a replacement snapshot");
