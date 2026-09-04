@@ -93,6 +93,7 @@ test("live factory bead supports hover summary and click details", async (contex
     { id: "progress-2", title: "Held by another work claw", status: "in_progress", issue_type: "task" },
   ];
   let beadFetches = 0;
+  let journalFetches = 0;
 
   window.fetch = async (input) => {
     const url = new URL(String(input), window.location.href);
@@ -108,6 +109,26 @@ test("live factory bead supports hover summary and click details", async (contex
           last_output: `working output ${beadFetches}`,
         }],
         total: 1,
+      });
+    }
+    if (url.pathname === "/api/events") {
+      journalFetches += 1;
+      const prime = url.searchParams.get("prime") === "true";
+      const sequence = prime ? 0 : journalFetches - 1;
+      return response({
+        city: "demo",
+        prime,
+        events: prime ? [] : [{
+          seq: sequence,
+          ts: `2026-09-03T12:00:0${sequence}Z`,
+          op: "comment",
+          issue_id: record.id,
+          issue: record,
+        }],
+        cursors: { demo: sequence },
+        reset: false,
+        streams: [{ id: "demo", name: "demo", hq: true, enabled: true, cursor: sequence }],
+        warnings: [],
       });
     }
     if (url.pathname === "/api/beads") {
@@ -129,11 +150,11 @@ test("live factory bead supports hover summary and click details", async (contex
   window.eval(instrumentedScript);
 
   await new Promise((resolve) => setTimeout(resolve, 40));
-  assert.match(window.document.getElementById("bef-event-line").textContent, /Live · demo · 3 shown of 3 · 1 working/);
-  assert.equal(window.document.getElementById("bef-motion-note").textContent, "Gravity on · live city · 500ms refresh · 1 working");
+  assert.match(window.document.getElementById("bef-event-line").textContent, /Live · demo · 3 shown of 3 · 1 working · journal demo:1 · 1 events applied/);
+  assert.equal(window.document.getElementById("bef-motion-note").textContent, "Gravity on · events journal · 500ms refresh · 1 working");
   assert.equal(root.__interactionState().workingClawCount, 1);
   assert.equal(root.__interactionState().activityCount, 1);
-  assert.equal(root.__interactionState().commentCount, 1);
+  assert.equal(root.__interactionState().commentCount, 2, "journal comment and changed worker output should both pulse");
 
   canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 338, bubbles: true }));
   const tooltip = window.document.getElementById("bef-tooltip");
@@ -150,7 +171,8 @@ test("live factory bead supports hover summary and click details", async (contex
   assert.match(window.document.getElementById("bef-details-body").textContent, /source/);
 
   await new Promise((resolve) => setTimeout(resolve, 650));
-  assert.ok(beadFetches >= 2, "the fast polling interval should refresh live beads automatically");
+  assert.ok(journalFetches >= 3, "the fast polling interval should consume journal events automatically");
+  assert.equal(beadFetches, 1, "journal polling should not refetch a full bead snapshot each time");
   canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 338, bubbles: true }));
   assert.equal(tooltip.hidden, true, "gravity should move the bead away from its initial position");
   canvas.dispatchEvent(new window.PointerEvent("pointermove", { clientX: 196, clientY: 384, bubbles: true }));

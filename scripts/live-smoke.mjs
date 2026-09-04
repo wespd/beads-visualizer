@@ -54,11 +54,15 @@ stage.getBoundingClientRect = () => rect;
 canvas.getBoundingClientRect = () => rect;
 window.eval(factoryScript);
 
-await new Promise((resolve) => setTimeout(resolve, 250));
-const eventLine = window.document.getElementById("bef-event-line").textContent;
+const eventLineElement = window.document.getElementById("bef-event-line");
+const liveDeadline = Date.now() + 15_000;
+while (!eventLineElement.textContent.startsWith("Live · ") && Date.now() < liveDeadline) {
+  await new Promise((resolve) => setTimeout(resolve, 50));
+}
+const eventLine = eventLineElement.textContent;
 assert.match(eventLine, /^Live · /, eventLine);
 if (city) assert.match(eventLine, new RegExp(`Live · ${city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} ·`));
-assert.match(window.document.getElementById("bef-motion-note").textContent, /^Gravity on · live city/);
+assert.match(window.document.getElementById("bef-motion-note").textContent, /^Gravity on · events journal/);
 
 const tooltip = window.document.getElementById("bef-tooltip");
 let hit = null;

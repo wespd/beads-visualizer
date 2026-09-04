@@ -16,6 +16,9 @@ test("preserves the pre-existing Beads Event Factory", () => {
 
 test("extends the factory with live data and bead inspection", () => {
   assert.match(html, /async function loadLiveBeads/);
+  assert.match(html, /fetchJSON\(journalURL/);
+  assert.match(html, /async function applyJournalEvents/);
+  assert.match(html, /async function moveJournalBead/);
   assert.match(html, /function applyLiveRecords/);
   assert.match(html, /canvas\.addEventListener\('pointermove'/);
   assert.match(html, /canvas\.addEventListener\('click'/);
@@ -28,7 +31,7 @@ test("enables gravity for loose live beads", () => {
   assert.match(html, /bead\.status === 'in_progress'/);
   assert.match(html, /bead\.dynamic = true/);
   assert.match(html, /enableLiveGravity\(gravityBeads\);/);
-  assert.match(html, /Gravity on · live city · \$\{livePollLabel\} refresh/);
+  assert.match(html, /Gravity on · events journal · \$\{livePollLabel\} refresh/);
 });
 
 test("gives every in-progress bead its own live claw", () => {
@@ -41,12 +44,21 @@ test("gives every in-progress bead its own live claw", () => {
 });
 
 test("animates honest worker activity without changing bead status", () => {
-  assert.match(html, /fetchJSON\(`\/api\/agents\?\$\{agentQuery\}`\)/);
+  assert.match(html, /fetchJSON\(`\/api\/agents\?\$\{query\}`\)/);
   assert.match(html, /agent\.state === 'working' && agent\.active_bead/);
   assert.match(html, /bead\.activityPulse = 1/);
   assert.match(html, /bead\.commentPulse = 1/);
   assert.match(html, /bead\.heldBy\.working = true/);
   assert.match(html, /ACTIVE · \$\{activity\.name\}/);
+});
+
+test("uses journal events for live changes and snapshots only for reconciliation", () => {
+  assert.match(html, /query\.set\('cursor', JSON\.stringify\(liveJournalCursors\)\)/);
+  assert.match(html, /event\.op === 'delete'/);
+  assert.match(html, /event\.issue\?\.id/);
+  assert.match(html, /dependency\.dependency_type \|\| dependency\.type \|\| dependency\.kind/);
+  assert.match(html, /Promise\.all\(transitions\.map/);
+  assert.match(html, /Date\.now\(\) - liveLastReconcile > 30000/);
 });
 
 test("jitters new spawns and reconciles rendered beads by ID", () => {
@@ -58,6 +70,8 @@ test("jitters new spawns and reconciles rendered beads by ID", () => {
 
 test("supports a bounded fast polling interval", () => {
   assert.match(html, /get\('poll'\)/);
+  assert.match(html, /closedToggle\.checked = locationParameters\.get\('closed'\) === '1'/);
+  assert.match(html, /searchInput\.value = locationParameters\.get\('search'\) \|\| ''/);
   assert.match(html, /Math\.min\(60000, Math\.max\(500, requestedPollMs\)\)/);
   assert.match(html, /window\.setInterval\(loadLiveBeads, livePollMs\)/);
 });

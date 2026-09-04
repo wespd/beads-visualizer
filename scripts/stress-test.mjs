@@ -19,6 +19,7 @@ const instrumentedScript = factoryScript.replace(
   initialization,
   `      Object.defineProperty(root, '__stressState', {
         value: () => ({
+          refreshing: liveRefreshInFlight,
           beadCount: beads.length,
           clawCount: liveWorkClaws.length,
           beads: beads.map((bead) => ({
@@ -33,6 +34,7 @@ const instrumentedScript = factoryScript.replace(
           claws: liveWorkClaws.map((claw) => ({ ref: claw, beadID: claw.beadID, x: claw.x, y: claw.y }))
         })
       });
+      Object.defineProperty(root, '__stressPoll', { value: () => loadLiveBeads() });
 ${initialization}`,
 );
 assert.notEqual(instrumentedScript, factoryScript, "stress diagnostics were not installed");
@@ -95,7 +97,11 @@ function recordFor(id, index, cycle) {
     case 1:
       return { ...base, status: "in_progress", assignee: `worker-${index % 12}` };
     case 2:
-      return { ...base, status: "open", is_blocked: true };
+      return {
+        ...base,
+        status: "open",
+        dependencies: [{ dependency_type: "blocks", status: "open", id: `blocker-${index}` }],
+      };
     case 3:
       return { ...base, status: "open", defer_until: "2099-01-01T00:00:00Z" };
     case 4:
@@ -134,14 +140,50 @@ function isInProgress(record) {
   return record.status === "in_progress";
 }
 
+function categoryFor(record) {
+  if (record.status === "closed" && record.metadata?.["gc.work_outcome"] === "failed") return "failed";
+  if (record.status === "closed") return "closed";
+  if (record.defer_until && new Date(record.defer_until) > new Date()) return "deferred";
+  if (record.status === "in_progress") return "in_progress";
+  if (record.is_blocked || record.dependencies?.some((dependency) => (
+    dependency.dependency_type === "blocks" && dependency.status !== "closed"
+  ))) return "blocked";
+  return "open";
+}
+
 let records = recordsFor(0);
 let beadFetches = 0;
+let journalSequence = 0;
+let pendingJournalEvents = [];
 let failNextBeadFetch = false;
 
 window.fetch = async (input) => {
   const url = new URL(String(input), window.location.href);
   if (url.pathname === "/api/config") return response({ defaultCity: "stress-city" });
   if (url.pathname === "/api/cities") return response({ items: [{ name: "stress-city", running: true }], total: 1 });
+  if (url.pathname === "/api/events") {
+    const prime = url.searchParams.get("prime") === "true";
+    const events = prime ? [] : pendingJournalEvents.splice(0).map((event) => ({
+      ...event,
+      seq: ++journalSequence,
+      ts: `2026-09-03T12:00:${String(journalSequence).padStart(2, "0")}Z`,
+    }));
+    return response({
+      city: "stress-city",
+      prime,
+      events,
+      cursors: { "stress-city": journalSequence },
+      reset: false,
+      streams: [{
+        id: "stress-city",
+        name: "stress-city",
+        hq: true,
+        enabled: true,
+        cursor: journalSequence,
+      }],
+      warnings: [],
+    });
+  }
   if (url.pathname === "/api/beads") {
     beadFetches += 1;
     if (failNextBeadFetch) {
@@ -184,6 +226,8 @@ function assertState(root, expectedRecords) {
   assert.equal(state.beads.filter((bead) => bead.status === "in_progress" && bead.held).length, expectedClaws);
   state.beads.forEach((bead) => {
     assert.ok(Number.isFinite(bead.x) && Number.isFinite(bead.y), `${bead.id} has invalid coordinates`);
+    const record = expectedRecords.find((candidate) => candidate.id === bead.id);
+    assert.equal(bead.status, categoryFor(record), `${bead.id} is in the wrong visual category`);
   });
   state.claws.forEach((claw) => {
     assert.ok(Number.isFinite(claw.x) && Number.isFinite(claw.y), `${claw.beadID} has an invalid claw`);
@@ -238,6 +282,37 @@ assert.ok(
   averageRefreshMs < maxAverageRefreshMs,
   `refresh churn averaged ${Math.round(averageRefreshMs)}ms; budget is ${maxAverageRefreshMs}ms`,
 );
+
+const journalTargets = records.slice(1, 4);
+const targetRefs = new Map(root.__stressState().beads
+  .filter((bead) => journalTargets.some((record) => record.id === bead.id))
+  .map((bead) => [bead.id, bead.ref]));
+const journalUpdates = new Map(journalTargets.map((record) => [record.id, {
+  ...record,
+  status: record.status === "in_progress" ? "open" : "in_progress",
+  assignee: record.status === "in_progress" ? undefined : `journal-worker-${record.id}`,
+  is_blocked: false,
+  defer_until: null,
+}]));
+records = records.map((record) => journalUpdates.get(record.id) || record);
+pendingJournalEvents = [...journalUpdates.values()].map((issue) => ({
+  op: "update",
+  issue_id: issue.id,
+  issue,
+}));
+previousFetches = beadFetches;
+void root.__stressPoll();
+await waitFor(
+  () => journalSequence === journalUpdates.size && !root.__stressState().refreshing,
+  "journal-driven claw transfers did not complete",
+  8000,
+);
+state = assertState(root, records);
+assert.equal(beadFetches, previousFetches, "journal polling should not fetch a replacement snapshot");
+journalUpdates.forEach((_record, id) => {
+  assert.equal(state.beads.find((bead) => bead.id === id).ref, targetRefs.get(id), `${id} was respawned after a journal event`);
+});
+maximumClaws = Math.max(maximumClaws, state.clawCount);
 
 const search = window.document.getElementById("bef-search");
 search.value = "stable-progress";

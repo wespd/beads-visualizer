@@ -21,8 +21,12 @@ The blog wrapper sandboxes that document in an iframe. The standalone repository
 When a Gas City supervisor is available, the factory starts in live mode and:
 
 - discovers running cities;
+- discovers the HQ and initialized rig stores and keeps an independent event cursor for each one;
+- primes the cursors, loads one state snapshot, then consumes `bd events tail` records for live changes;
 - places real beads in the original blocked funnel, open bin, work area, closed bin, and deferred/failed floor;
-- refreshes every 15 seconds while preserving already-rendered beads and their motion;
+- animates journaled status changes with concurrent claws instead of teleporting beads between categories;
+- reconciles with a state snapshot every 30 seconds because pulls and merges are not journaled;
+- polls every 15 seconds while preserving already-rendered beads and their motion;
 - gives newly discovered beads a slight random spawn offset before gravity takes over;
 - gives every in-progress bead its own work claw;
 - uses Gas City's real agent activity to bob the assigned claw, pulse the active bead, and show a speech bubble when output changes;
@@ -40,10 +44,20 @@ Requirements:
 
 - Node.js 20 or newer.
 - Gas City 1.4.1 or newer with its supervisor API running.
+- A Beads build with `bd events`, with the event journal enabled in every store you want to watch.
 
 ```sh
 gc status
+bd config set events-journal true
 npm start -- --city my-city
+```
+
+Run the config command from each rig as well as the city HQ. If the journal is disabled or the selected `bd` lacks event support, the viewer says so and falls back to periodic snapshots; it does not label snapshot polling as journal activity.
+
+To test a release-candidate binary without replacing the installed `bd`:
+
+```sh
+npm start -- --city my-city --bd /absolute/path/to/bd
 ```
 
 Open <http://127.0.0.1:4173>.
@@ -52,6 +66,8 @@ For a faster temporary polling interval, pass milliseconds in the viewer URL. Th
 
 ```text
 http://127.0.0.1:4173/?city=my-city&poll=1000
+http://127.0.0.1:4173/?city=my-city&poll=1000&closed=1
+http://127.0.0.1:4173/?city=my-city&poll=1000&closed=1&search=my-label
 http://127.0.0.1:4173/?city=my-city&showcase=1
 ```
 
@@ -75,6 +91,7 @@ The local server exposes only:
 - `GET /api/config`
 - `GET /api/cities`
 - `GET /api/agents`
+- `GET /api/events`
 - `GET /api/beads`
 - `GET /api/bead/:id`
 - `GET /api/bead/:id/deps`

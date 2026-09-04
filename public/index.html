@@ -1296,6 +1296,12 @@ html>body{padding:0}</style>
       let liveTotal = 0;
       let liveRequest = 0;
       let liveTimer = 0;
+      let liveRefreshInFlight = false;
+      let liveJournalCity = '';
+      let liveJournalCursors = {};
+      let liveJournalStreams = [];
+      let liveJournalEventCount = 0;
+      let liveLastReconcile = 0;
       let showcaseTimer = 0;
       let showcaseStep = 0;
       let showcaseEpoch = 0;
@@ -2273,7 +2279,11 @@ html>body{padding:0}</style>
         if (record.status === 'closed') return 'closed';
         if (record.defer_until && new Date(record.defer_until) > new Date()) return 'deferred';
         if (record.status === 'in_progress') return 'in_progress';
-        if (record.is_blocked === true) return 'blocked';
+        const activeBlockingDependency = (record.dependencies || []).some((dependency) => {
+          const kind = dependency.dependency_type || dependency.type || dependency.kind;
+          return ['blocks', 'blocked-by', 'depends-on'].includes(kind) && dependency.status !== 'closed';
+        });
+        if (record.is_blocked === true || activeBlockingDependency) return 'blocked';
         return 'open';
       }
 
@@ -2421,6 +2431,55 @@ html>body{padding:0}</style>
         claw.visible = false;
       }
 
+      async function moveJournalBead(previousRecord, nextRecord, records) {
+        const bead = findBead(previousRecord.id);
+        if (!bead || viewMode !== 'live') return;
+
+        const travelY = layout().progress.travelY;
+        const destination = showcaseDestination(nextRecord, records);
+        let claw = bead.heldBy;
+        if (!claw) {
+          claw = createLiveWorkClaw(bead.id, -45, travelY);
+          claw.open = 1;
+          liveWorkClaws.push(claw);
+          await moveClawHorizontal(claw, bead.x, 520);
+          if (viewMode !== 'live') return;
+          await moveClawVertical(claw, bead.y - 28, 360);
+          await articulateClaw(claw, 0, 180);
+          bead.dynamic = false;
+          bead.vx = 0;
+          bead.vy = 0;
+          bead.heldBy = claw;
+          bead.status = 'in_progress';
+          bead.progressPulse = 1;
+          requestFrame();
+        }
+
+        await moveClawVertical(claw, travelY, 380);
+        await moveClawHorizontal(claw, destination.x, 720);
+        if (viewMode !== 'live') return;
+
+        if (destination.held) {
+          await moveClawVertical(claw, destination.y, 380);
+          claw.homeX = destination.x;
+          claw.homeY = destination.y;
+          claw.open = 0;
+          claw.beadID = bead.id;
+          bead.record = nextRecord;
+          bead.status = 'in_progress';
+          bead.dynamic = false;
+          return;
+        }
+
+        await moveClawVertical(claw, destination.y, 340);
+        await articulateClaw(claw, 1, 180);
+        bead.record = nextRecord;
+        release(bead, destination.status, claw.sway * width * 0.18, 12);
+        await moveClawVertical(claw, travelY, 360);
+        await moveClawHorizontal(claw, -45, 520);
+        claw.visible = false;
+      }
+
       async function animateShowcaseTransition(nextRecords, nextStep, epoch) {
         const nextByID = new Map(nextRecords.map((record) => [record.id, record]));
         const changes = liveRecords.filter((record) => liveStatus(record) !== liveStatus(nextByID.get(record.id)));
@@ -2526,6 +2585,17 @@ html>body{padding:0}</style>
         });
         if (activeAgents.length) requestFrame();
         return activeAgents;
+      }
+
+      function liveJournalLabel() {
+        const enabled = liveJournalStreams.filter((stream) => stream.enabled === true);
+        const disabled = liveJournalStreams.filter((stream) => stream.enabled === false);
+        const failed = liveJournalStreams.filter((stream) => stream.enabled === null || stream.error);
+        if (failed.length) return `journal error on ${failed.length} store${failed.length === 1 ? '' : 's'}`;
+        if (!enabled.length && disabled.length) return 'journal disabled · snapshot fallback';
+        if (!enabled.length) return 'journal unavailable';
+        const head = enabled.map((stream) => `${stream.name}:${stream.cursor}`).join(', ');
+        return `journal ${head}${disabled.length ? ` · ${disabled.length} disabled` : ''}`;
       }
 
       function applyLiveRecords() {
@@ -2682,8 +2752,9 @@ html>body{padding:0}</style>
         } else {
           const loadedNote = liveRecords.length < liveTotal ? ` · newest ${liveRecords.length} loaded` : '';
           const workingNote = activeAgents.length ? ` · ${activeAgents.length} working` : '';
-          eventLine.textContent = `Live · ${citySelect.value} · ${shown} shown of ${liveTotal}${loadedNote}${workingNote} · updated ${new Date().toLocaleTimeString()}`;
-          motionNote.textContent = `Gravity on · live city · ${livePollLabel} refresh${workingNote}`;
+          const eventNote = liveJournalEventCount ? ` · ${liveJournalEventCount} events applied` : '';
+          eventLine.textContent = `Live · ${citySelect.value} · ${shown} shown of ${liveTotal}${loadedNote}${workingNote} · ${liveJournalLabel()}${eventNote} · updated ${new Date().toLocaleTimeString()}`;
+          motionNote.textContent = `Gravity on · events journal · ${livePollLabel} refresh${workingNote}`;
         }
         draw();
       }
@@ -2696,44 +2767,152 @@ html>body{padding:0}</style>
         if (types.includes(selected)) typeSelect.value = selected;
       }
 
-      async function loadLiveBeads() {
-        if (!citySelect.value) return;
-        const request = ++liveRequest;
-        refreshButton.disabled = true;
-        eventLine.textContent = `Loading beads from ${citySelect.value}…`;
+      async function fetchLiveSnapshot() {
         const query = new URLSearchParams({ city: citySelect.value, limit: '100' });
-        const agentQuery = new URLSearchParams({ city: citySelect.value, peek: 'true' });
-        const agentsPromise = fetchJSON(`/api/agents?${agentQuery}`).catch(() => ({ items: liveAgents }));
+        if (!closedToggle.checked) return fetchJSON(`/api/beads?${query}`);
+        const allQuery = new URLSearchParams(query);
+        allQuery.set('all', 'true');
+        allQuery.set('limit', '40');
+        const [allData, activeData] = await Promise.all([
+          fetchJSON(`/api/beads?${allQuery}`),
+          fetchJSON(`/api/beads?${query}`)
+        ]);
+        const records = new Map((allData.items || []).map((record) => [record.id, record]));
+        (activeData.items || []).forEach((record) => records.set(record.id, record));
+        return { ...allData, items: [...records.values()] };
+      }
+
+      function fetchLiveAgents() {
+        const query = new URLSearchParams({ city: citySelect.value, peek: 'true' });
+        return fetchJSON(`/api/agents?${query}`).catch(() => ({ items: liveAgents }));
+      }
+
+      function journalURL({ prime = false } = {}) {
+        const query = new URLSearchParams({ city: citySelect.value, limit: '250' });
+        if (prime) query.set('prime', 'true');
+        else query.set('cursor', JSON.stringify(liveJournalCursors));
+        return `/api/events?${query}`;
+      }
+
+      function rememberJournal(data) {
+        liveJournalCity = data.city || citySelect.value;
+        liveJournalCursors = data.cursors || liveJournalCursors;
+        liveJournalStreams = data.streams || [];
+      }
+
+      function replaceLiveSnapshot(data) {
+        liveRecords = data.items || [];
+        liveTotal = data.total ?? liveRecords.length;
+        liveLastReconcile = Date.now();
+      }
+
+      async function applyJournalEvents(events) {
+        if (!events.length) {
+          applyLiveRecords();
+          return;
+        }
+
+        const previous = new Map(liveRecords.map((record) => [record.id, record]));
+        const next = new Map(previous);
+        const commented = new Set();
+        events.forEach((event) => {
+          if (event.op === 'delete') {
+            next.delete(event.issue_id);
+            return;
+          }
+          if (event.op === 'comment') commented.add(event.issue_id);
+          if (!event.issue?.id) return;
+          if (event.issue.status === 'closed' && !closedToggle.checked) next.delete(event.issue.id);
+          else next.set(event.issue.id, event.issue);
+        });
+
+        const nextRecords = [...next.values()];
+        const transitions = nextRecords.flatMap((record) => {
+          const oldRecord = previous.get(record.id);
+          return oldRecord && liveStatus(oldRecord) !== liveStatus(record) ? [[oldRecord, record]] : [];
+        });
+        if (transitions.length) {
+          eventLine.textContent = `Live · ${citySelect.value} · ${events.length} journal event${events.length === 1 ? '' : 's'} · ${transitions.length} concurrent claw transfer${transitions.length === 1 ? '' : 's'}`;
+          motionNote.textContent = 'Gravity on · journal events moving beads between categories';
+          await Promise.all(transitions.map(([oldRecord, record]) => (
+            moveJournalBead(oldRecord, record, nextRecords)
+          )));
+        }
+        if (viewMode !== 'live') return;
+        liveRecords = nextRecords;
+        liveTotal = liveRecords.length;
+        liveJournalEventCount += events.length;
+        updateTypeOptions();
+        applyLiveRecords();
+        commented.forEach((id) => {
+          const bead = findBead(id);
+          if (bead) bead.commentPulse = 1;
+        });
+        if (commented.size) requestFrame();
+      }
+
+      async function establishLiveBaseline(request) {
+        const prime = await fetchJSON(journalURL({ prime: true }));
+        if (request !== liveRequest || viewMode !== 'live') return;
+        rememberJournal(prime);
+        const [snapshot, agents] = await Promise.all([fetchLiveSnapshot(), fetchLiveAgents()]);
+        if (request !== liveRequest || viewMode !== 'live') return;
+        replaceLiveSnapshot(snapshot);
+        liveAgents = agents.items || [];
+        updateTypeOptions();
+        applyLiveRecords();
+
+        const delta = await fetchJSON(journalURL());
+        if (request !== liveRequest || viewMode !== 'live') return;
+        rememberJournal(delta);
+        if (!delta.reset) await applyJournalEvents(delta.events || []);
+        else applyLiveRecords();
+      }
+
+      async function loadLiveBeads(options = {}) {
+        if (!citySelect.value || liveRefreshInFlight) return;
+        const request = ++liveRequest;
+        const city = citySelect.value;
+        const reconcile = options.reconcile === true || Date.now() - liveLastReconcile > 30000;
+        liveRefreshInFlight = true;
+        refreshButton.disabled = true;
+        eventLine.textContent = `Loading beads and journal from ${city}…`;
         try {
-          let data;
-          let agentData;
-          if (closedToggle.checked) {
-            const allQuery = new URLSearchParams(query);
-            allQuery.set('all', 'true');
-            allQuery.set('limit', '40');
-            const [allData, activeData, fetchedAgents] = await Promise.all([
-              fetchJSON(`/api/beads?${allQuery}`),
-              fetchJSON(`/api/beads?${query}`),
-              agentsPromise
-            ]);
-            const records = new Map((allData.items || []).map((record) => [record.id, record]));
-            (activeData.items || []).forEach((record) => records.set(record.id, record));
-            data = { ...allData, items: [...records.values()] };
-            agentData = fetchedAgents;
+          if (liveJournalCity !== city || options.baseline === true) {
+            liveJournalEventCount = 0;
+            await establishLiveBaseline(request);
+            return;
+          }
+
+          let snapshot = null;
+          let agents;
+          if (reconcile) {
+            [snapshot, agents] = await Promise.all([fetchLiveSnapshot(), fetchLiveAgents()]);
           } else {
-            [data, agentData] = await Promise.all([fetchJSON(`/api/beads?${query}`), agentsPromise]);
+            agents = await fetchLiveAgents();
           }
           if (request !== liveRequest || viewMode !== 'live') return;
-          liveRecords = data.items || [];
-          liveAgents = agentData.items || [];
-          liveTotal = data.total ?? liveRecords.length;
+          const journal = await fetchJSON(journalURL());
+          if (request !== liveRequest || viewMode !== 'live') return;
+          rememberJournal(journal);
+          liveAgents = agents.items || [];
+          if (snapshot) replaceLiveSnapshot(snapshot);
+          if (journal.reset && !snapshot) {
+            replaceLiveSnapshot(await fetchLiveSnapshot());
+          } else if (!journal.reset) {
+            await applyJournalEvents(journal.events || []);
+            return;
+          }
           updateTypeOptions();
           applyLiveRecords();
         } catch (error) {
           eventLine.textContent = `Live city unavailable — ${error.message}`;
           motionNote.textContent = 'Connection error';
         } finally {
-          refreshButton.disabled = false;
+          if (request === liveRequest) {
+            refreshButton.disabled = false;
+            liveRefreshInFlight = false;
+          }
         }
       }
 
@@ -2776,7 +2955,9 @@ html>body{padding:0}</style>
 
       function setMode(mode) {
         showcaseEpoch += 1;
-        if (viewMode === 'showcase') cancelShowcaseTweens();
+        liveRequest += 1;
+        liveRefreshInFlight = false;
+        if (viewMode === 'showcase' || viewMode === 'live') cancelShowcaseTweens();
         viewMode = mode;
         const live = mode === 'live';
         const showcase = mode === 'showcase';
@@ -2795,7 +2976,10 @@ html>body{padding:0}</style>
         if (live) {
           liveRecords = [];
           liveTotal = 0;
-          void loadLiveBeads();
+          liveJournalCity = '';
+          liveJournalCursors = {};
+          liveJournalStreams = [];
+          void loadLiveBeads({ baseline: true });
         } else if (showcase) {
           searchInput.value = '';
           typeSelect.value = '';
@@ -2817,6 +3001,7 @@ html>body{padding:0}</style>
       async function initializeLiveViewer() {
         try {
           const [config, cities] = await Promise.all([fetchJSON('/api/config'), fetchJSON('/api/cities')]);
+          const locationParameters = new URLSearchParams(location.search);
           citySelect.replaceChildren();
           (cities.items || []).forEach((city) => {
             const cityOption = option(city.name, city.name);
@@ -2824,12 +3009,14 @@ html>body{padding:0}</style>
             citySelect.append(cityOption);
           });
           if (!citySelect.options.length) throw new Error('No running cities found');
-          const requestedCity = new URLSearchParams(location.search).get('city');
+          const requestedCity = locationParameters.get('city');
           const preferredCity = requestedCity || config.defaultCity;
           if (preferredCity && [...citySelect.options].some((option) => option.value === preferredCity)) {
             citySelect.value = preferredCity;
           }
-          setMode(new URLSearchParams(location.search).get('showcase') === '1' ? 'showcase' : 'live');
+          closedToggle.checked = locationParameters.get('closed') === '1';
+          searchInput.value = locationParameters.get('search') || '';
+          setMode(locationParameters.get('showcase') === '1' ? 'showcase' : 'live');
         } catch (error) {
           setMode('demo');
           eventLine.textContent = `Demo mode · ${error.message}`;
@@ -2998,16 +3185,19 @@ html>body{padding:0}</style>
       }
 
       nextButton.addEventListener('click', runNextEvent);
-      refreshButton.addEventListener('click', loadLiveBeads);
+      refreshButton.addEventListener('click', () => loadLiveBeads({ reconcile: true }));
       showcaseButton.addEventListener('click', () => setMode(viewMode === 'showcase' ? 'live' : 'showcase'));
       modeButton.addEventListener('click', () => setMode(viewMode === 'demo' ? 'live' : 'demo'));
       citySelect.addEventListener('change', () => {
         const url = new URL(location.href);
         url.searchParams.set('city', citySelect.value);
         history.replaceState(null, '', url);
-        void loadLiveBeads();
+        liveRequest += 1;
+        liveRefreshInFlight = false;
+        liveJournalCity = '';
+        void loadLiveBeads({ baseline: true });
       });
-      closedToggle.addEventListener('change', loadLiveBeads);
+      closedToggle.addEventListener('change', () => loadLiveBeads({ reconcile: true }));
       searchInput.addEventListener('input', applyLiveRecords);
       typeSelect.addEventListener('change', applyLiveRecords);
       detailsClose.addEventListener('click', closeDetails);
