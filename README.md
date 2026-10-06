@@ -2,9 +2,9 @@
 
 Wesley Davidson's Beads Event Factory visualizer, extracted from the Gas City blog demo and extended into a live, read-only Beads viewer.
 
-![Beads Event Factory showing blocked, open, in-progress, closed, and deferred or failed-close beads, with mechanical claws moving beads between categories.](docs/images/beads-event-factory.png)
+![Beads Event Factory showing blocked, open, in-progress, closed, and deferred or failed-close beads, with in-progress beads held by mechanical claws.](docs/images/beads-event-factory.png)
 
-The screenshot shows the synthetic Showcase mode. Run the viewer and open `http://127.0.0.1:4173/?showcase=1` to try it.
+The screenshot shows a settled frame from the synthetic Showcase mode. Run the viewer and open `http://127.0.0.1:4173/?showcase=1` to try it.
 
 The canvas, factory machinery, bins, claws, physics, visual design, and twelve-event journal playback are the original visualizer. The standalone viewer adds live city data, filters, hover summaries, and click details without replacing that design.
 
